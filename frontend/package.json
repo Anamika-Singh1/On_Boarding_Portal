@@ -5,14 +5,10 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-  "dev:client": "vite",
- "dev:server": "cd ../backend && nodemon server.js"
-,
-  "build": "vite build",
-  "lint": "eslint .",
-  "preview": "vite preview"
-},
-
+    "build": "vite build",
+    "preview": "vite preview",
+    "lint": "eslint ."
+  },
   "dependencies": {
     "clsx": "^2.1.1",
     "lucide-react": "^0.518.0",
