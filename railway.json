@@ -1,0 +1,10 @@
+{
+    "rootDirectory": "backend",
+    "buildCommand": "npm install",
+    "startCommand": "npm start",
+    "watch": [
+      "backend/**/*"
+    ],
+    "deployOnPush": true
+  }
+  
