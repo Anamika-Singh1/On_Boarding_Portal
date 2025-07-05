@@ -1,27 +1,17 @@
-// backend/server.js
-const express = require('express');
-const mongoose = require('mongoose');
-const cors = require('cors');
-require('dotenv').config();
-
-const app = express();
-
-// Middleware
-app.use(cors());
-app.use(express.json());
-
-// Routes
-const authRoutes = require('./routes/authRoutes');
-const eventRoutes = require('./routes/events');
-const mentorRoutes = require('./routes/mentors');
+// ... your existing app.use routes
 
 app.use('/api/auth', authRoutes);
 app.use('/api/events', eventRoutes);
 app.use('/api/mentors', mentorRoutes);
 
+// ✅ Default test route for root
+app.get("/", (req, res) => {
+  res.send("✅ Welcome to the AiEnsured Onboarding Portal Backend!");
+});
+
 // MongoDB Connection
 mongoose.connect(process.env.MONGO_URI, {
-  serverSelectionTimeoutMS: 10000  // ⏱️ Wait up to 10s for connection
+  serverSelectionTimeoutMS: 10000
 })
 .then(() => console.log('✅ MongoDB connected'))
 .catch((err) => console.error('❌ DB connection error:', err));
