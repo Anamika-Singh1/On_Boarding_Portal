@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Eye, EyeOff } from 'lucide-react';
 
-const LoginPage = ({ onLogin }) => {
+const LoginPage = ({ onLogin, apiBaseUrl }) => {
   const [formType, setFormType] = useState('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -32,7 +32,7 @@ const LoginPage = ({ onLogin }) => {
           ? 'register'
           : 'forgot';
 
-      const res = await fetch(`http://localhost:5000/api/auth/${endpoint}`, {
+      const res = await fetch(`${apiBaseUrl}/api/auth/${endpoint}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(

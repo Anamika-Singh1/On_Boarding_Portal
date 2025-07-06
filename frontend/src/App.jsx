@@ -19,6 +19,9 @@ import ResetPassword from "./pages/ResetPassword";
 const AuthContext = createContext();
 const ThemeContext = createContext();
 
+// 🔧 Set up API base URL from environment
+const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
 // Initial mock data
 const initialData = {
   users: [
@@ -106,7 +109,6 @@ export default function App() {
   };
 
   useEffect(() => {
-    const API_BASE_URL = import.meta.env.VITE_API_URL || "";
     fetch(`${API_BASE_URL}/api/events`)
       .then((res) => res.json())
       .then((events) => {
@@ -122,7 +124,7 @@ export default function App() {
           {window.location.pathname.startsWith("/reset-password") ? (
             <ResetPassword />
           ) : (
-            <LoginPage onLogin={setUser} />
+            <LoginPage onLogin={setUser} apiBaseUrl={API_BASE_URL} />
           )}
         </div>
       </ThemeContext.Provider>
