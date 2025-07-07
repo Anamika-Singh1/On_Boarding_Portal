@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { Plus, Edit, Trash2, Bell } from 'lucide-react';
 
 const EventsPage = ({ user, data, updateData, showToast }) => {
+  const API_BASE_URL = import.meta.env.VITE_API_URL || '';
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingEvent, setEditingEvent] = useState(null);
   const [formData, setFormData] = useState({
@@ -13,14 +14,14 @@ const EventsPage = ({ user, data, updateData, showToast }) => {
   const [todayNotifications, setTodayNotifications] = useState([]);
 
   const fetchAndUpdateEvents = () => {
-    fetch('http://localhost:5000/api/events')
+    fetch(`${API_BASE_URL}/api/events`)
       .then(res => res.json())
       .then(events => {
         const now = new Date();
         const updatedEvents = events.map(event => {
           const eventEnd = new Date(`${event.date}T${event.endTime || '23:59'}`);
           if (event.status === 'upcoming' && eventEnd < now) {
-            fetch(`http://localhost:5000/api/events/${event._id}`, {
+            fetch(`${API_BASE_URL}/api/events/${event._id}`, {
               method: 'PUT',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify({ ...event, status: 'past' })
@@ -72,7 +73,7 @@ const EventsPage = ({ user, data, updateData, showToast }) => {
     const payload = { ...formData, teamMembers: formData.teamMembers.split(',').map(t => t.trim()), status: 'upcoming' };
 
     if (editingEvent) {
-      fetch(`http://localhost:5000/api/events/${editingEvent._id}`, {
+      fetch(`${API_BASE_URL}/api/events/${editingEvent._id}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -89,7 +90,7 @@ const EventsPage = ({ user, data, updateData, showToast }) => {
           showToast('Failed to update event', 'error');
         });
     } else {
-      fetch('http://localhost:5000/api/events', {
+      fetch(`${API_BASE_URL}/api/events`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload)
@@ -124,7 +125,7 @@ const EventsPage = ({ user, data, updateData, showToast }) => {
 
   const handleDelete = (id) => {
     if (confirm('Are you sure you want to delete this event?')) {
-      fetch(`http://localhost:5000/api/events/${id}`, {
+      fetch(`${API_BASE_URL}/api/events/${id}`, {
         method: 'DELETE'
       })
         .then(() => {

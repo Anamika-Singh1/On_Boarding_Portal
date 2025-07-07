@@ -59,7 +59,9 @@ router.post('/', async (req, res) => {
       name,
       description,
       status,
-      teamMembers,
+      teamMembers: Array.isArray(teamMembers)
+        ? teamMembers
+        : teamMembers.split(',').map(m => m.trim()),
       date,
       startTime,
       endTime,
