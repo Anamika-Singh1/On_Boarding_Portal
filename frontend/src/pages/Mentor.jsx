@@ -10,63 +10,66 @@ const Mentor = ({ user, data, updateData, showToast }) => {
     field: '',
     project: '',
     skills: '',
-    internsAssigned: 0
+    internsAssigned: 0,
   });
 
+  const fetchMentors = async () => {
+    try {
+      const res = await fetch('http://localhost:5000/api/mentors');
+      const mentors = await res.json();
+      updateData('mentors', mentors);
+    } catch (err) {
+      console.error('Error fetching mentors:', err);
+      showToast('Failed to fetch mentors', 'error');
+    }
+  };
+
   useEffect(() => {
-    fetch('http://localhost:5000/api/mentors')
-      .then(res => res.json())
-      .then(mentors => {
-        updateData('mentors', mentors);
-      })
-      .catch(err => console.error('Error fetching mentors:', err));
+    fetchMentors();
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     const skillsArray = formData.skills
       .split(',')
       .map((s) => s.trim())
       .filter(Boolean);
 
-    const updatedMentor = {
+    const payload = {
       ...formData,
       skills: skillsArray,
-      internsAssigned: parseInt(formData.internsAssigned),
+      internsAssigned: Math.max(0, parseInt(formData.internsAssigned) || 0),
     };
 
-    if (editingMentor) {
-      fetch(`http://localhost:5000/api/mentors/${editingMentor._id}`, {
-        method: 'PUT',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedMentor),
-      })
-        .then(res => res.json())
-        .then(updated => {
-          const updatedList = data.mentors.map(m => m._id === updated._id ? updated : m);
-          updateData('mentors', updatedList);
-          showToast('Mentor updated successfully!', 'success');
-          resetForm();
-        });
-    } else {
-      fetch('http://localhost:5000/api/mentors', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(updatedMentor),
-      })
-        .then(res => res.json())
-        .then(newMentor => {
-          updateData('mentors', [...data.mentors, newMentor]);
-          showToast('Mentor added successfully!', 'success');
-          resetForm();
-        });
-    }
-  };
+    try {
+      const endpoint = editingMentor
+        ? `http://localhost:5000/api/mentors/${editingMentor._id}`
+        : 'http://localhost:5000/api/mentors';
 
-  const resetForm = () => {
-    setIsModalOpen(false);
-    setEditingMentor(null);
-    setFormData({ name: '', department: '', field: '', project: '', skills: '', internsAssigned: 0 });
+      const method = editingMentor ? 'PUT' : 'POST';
+
+      const res = await fetch(endpoint, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+
+      if (!res.ok) throw new Error(result.message || 'Error saving mentor');
+
+      const updatedMentors = editingMentor
+        ? data.mentors.map((m) => (m._id === result._id ? result : m))
+        : [...data.mentors, result];
+
+      updateData('mentors', updatedMentors);
+      showToast(`Mentor ${editingMentor ? 'updated' : 'added'} successfully`, 'success');
+      resetForm();
+    } catch (err) {
+      console.error('Error saving mentor:', err.message);
+      showToast('Failed to save mentor', 'error');
+    }
   };
 
   const handleEdit = (mentor) => {
@@ -80,16 +83,29 @@ const Mentor = ({ user, data, updateData, showToast }) => {
       internsAssigned: mentor.internsAssigned,
     });
     setIsModalOpen(true);
+    window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleDelete = (mentorId) => {
-    fetch(`http://localhost:5000/api/mentors/${mentorId}`, {
-      method: 'DELETE'
-    })
-      .then(() => {
-        updateData('mentors', data.mentors.filter((mentor) => mentor._id !== mentorId));
-        showToast('Mentor deleted successfully!', 'success');
-      });
+  const handleDelete = async (id) => {
+    if (!window.confirm('Are you sure you want to delete this mentor?')) return;
+
+    try {
+      const res = await fetch(`http://localhost:5000/api/mentors/${id}`, { method: 'DELETE' });
+
+      if (!res.ok) throw new Error('Failed to delete');
+
+      updateData('mentors', data.mentors.filter((m) => m._id !== id));
+      showToast('Mentor deleted successfully', 'success');
+    } catch (err) {
+      console.error('Delete error:', err.message);
+      showToast('Failed to delete mentor', 'error');
+    }
+  };
+
+  const resetForm = () => {
+    setIsModalOpen(false);
+    setEditingMentor(null);
+    setFormData({ name: '', department: '', field: '', project: '', skills: '', internsAssigned: 0 });
   };
 
   return (
@@ -108,9 +124,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
 
       <div className="grid md:grid-cols-2 gap-6">
         {data.mentors.map((mentor) => {
-          const assignedInterns = data.interns?.filter(
-            (intern) => intern.mentorId === mentor._id
-          ) || [];
+          const assignedInterns = data.interns?.filter((i) => i.mentorId === mentor._id) || [];
 
           return (
             <div key={mentor._id} className="border rounded p-4 shadow bg-white dark:bg-gray-800">
@@ -136,10 +150,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                   <strong>Skills:</strong>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {mentor.skills.map((skill, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 rounded-full text-sm"
-                      >
+                      <span key={i} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 rounded-full text-sm">
                         {skill}
                       </span>
                     ))}
@@ -151,7 +162,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                   {assignedInterns.length > 0 ? (
                     <ul className="list-disc list-inside text-sm mt-1">
                       {assignedInterns.map((intern) => (
-                        <li key={intern.id}>{intern.name} ({intern.email})</li>
+                        <li key={intern._id}>{intern.name} ({intern.email})</li>
                       ))}
                     </ul>
                   ) : (
@@ -175,6 +186,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                 <input
                   key={field}
                   type={field === 'internsAssigned' ? 'number' : 'text'}
+                  min={field === 'internsAssigned' ? 0 : undefined}
                   value={formData[field]}
                   onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
                   placeholder={field === 'skills' ? 'Python, React' : `Enter ${field}`}
@@ -183,17 +195,10 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                 />
               ))}
               <div className="flex space-x-4">
-                <button
-                  type="submit"
-                  className="bg-green-600 text-white px-4 py-2 rounded w-full"
-                >
+                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded w-full">
                   {editingMentor ? 'Update' : 'Add'} Mentor
                 </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="bg-gray-400 text-white px-4 py-2 rounded w-full"
-                >
+                <button type="button" onClick={resetForm} className="bg-gray-400 text-white px-4 py-2 rounded w-full">
                   Cancel
                 </button>
               </div>
