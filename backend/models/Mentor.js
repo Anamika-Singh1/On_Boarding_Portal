@@ -1,3 +1,4 @@
+// models/Mentor.js
 const mongoose = require('mongoose');
 
 const mentorSchema = new mongoose.Schema({
@@ -7,8 +8,6 @@ const mentorSchema = new mongoose.Schema({
   project: { type: String },
   skills: { type: [String], required: true },
   internsAssigned: { type: Number, default: 0 },
-}, {
-  timestamps: true
-})
+}, { timestamps: true });
 
 module.exports = mongoose.model('Mentor', mentorSchema);

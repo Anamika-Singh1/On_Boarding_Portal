@@ -14,11 +14,18 @@ const Mentor = ({ user, data, updateData, showToast }) => {
     internsAssigned: 0
   });
 
+  const fetchMentors = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/mentors`);
+      const mentors = await res.json();
+      updateData('mentors', mentors);
+    } catch (err) {
+      console.error('Error fetching mentors:', err);
+    }
+  };
+
   useEffect(() => {
-    fetch(`${API_BASE_URL}/api/mentors`)
-      .then(res => res.json())
-      .then(mentors => updateData('mentors', mentors))
-      .catch(err => console.error('Error fetching mentors:', err));
+    fetchMentors();
   }, []);
 
   const handleSubmit = async (e) => {
@@ -55,17 +62,8 @@ const Mentor = ({ user, data, updateData, showToast }) => {
         return;
       }
 
-      if (editingMentor) {
-        const updatedList = data.mentors.map(m =>
-          m._id === result._id ? result : m
-        );
-        updateData('mentors', updatedList);
-        showToast('Mentor updated successfully!', 'success');
-      } else {
-        updateData('mentors', [...data.mentors, result]);
-        showToast('Mentor added successfully!', 'success');
-      }
-
+      await fetchMentors();
+      showToast(editingMentor ? 'Mentor updated successfully!' : 'Mentor added successfully!', 'success');
       resetForm();
     } catch (error) {
       console.error('Error submitting mentor:', error);
@@ -101,12 +99,33 @@ const Mentor = ({ user, data, updateData, showToast }) => {
 
   const handleDelete = async (mentorId) => {
     try {
-      await fetch(`${API_BASE_URL}/api/mentors/${mentorId}`, { method: 'DELETE' });
-      updateData('mentors', data.mentors.filter(m => m._id !== mentorId));
-      showToast('Mentor deleted successfully!', 'success');
+      const res = await fetch(`${API_BASE_URL}/api/mentors/${mentorId}`, {
+        method: 'DELETE',
+      });
+
+      if (!res.ok) {
+        const contentType = res.headers.get("content-type");
+        let errorMessage = 'Failed to delete mentor';
+
+        if (contentType && contentType.includes("application/json")) {
+          const result = await res.json();
+          errorMessage = result.message || errorMessage;
+        } else {
+          const text = await res.text();
+          console.error('Unexpected response:', text);
+          errorMessage = text;
+        }
+
+        showToast(errorMessage, 'error');
+        return;
+      }
+
+      const result = await res.json();
+      showToast(result.message || 'Mentor deleted successfully!', 'success');
+      await fetchMentors();
     } catch (err) {
-      console.error('Error deleting mentor:', err);
-      showToast('Failed to delete mentor', 'error');
+      console.error('❌ Error deleting mentor:', err.message);
+      showToast('Failed to delete mentor. Please try again.', 'error');
     }
   };
 

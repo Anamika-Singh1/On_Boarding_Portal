@@ -3,11 +3,9 @@ const express = require('express');
 const router = express.Router();
 const Mentor = require('../models/Mentor');
 
-// GET all mentors
+// ✅ GET all mentors
 router.get('/', async (req, res) => {
   try {
-    console.log('Received Body:', req.body);
-
     const mentors = await Mentor.find();
     res.json(mentors);
   } catch (err) {
@@ -15,20 +13,15 @@ router.get('/', async (req, res) => {
   }
 });
 
-// POST a mentor
+// ✅ POST create mentor
 router.post('/', async (req, res) => {
-  console.log('📥 Received Mentor:', req.body);
+  console.log('📥 Mentor POST body:', req.body);
 
   try {
-    let { name, department, field, project, skills, internsAssigned } = req.body;
+    const { name, department, field, project, skills, internsAssigned } = req.body;
 
-    if (!name || !skills) {
-      return res.status(400).json({ message: 'Missing required fields' });
-    }
-
-    // Convert string to array if needed
-    if (typeof skills === 'string') {
-      skills = skills.split(',').map(s => s.trim());
+    if (!name || !skills || !Array.isArray(skills)) {
+      return res.status(400).json({ message: 'Missing or invalid required fields' });
     }
 
     const mentor = new Mentor({
@@ -40,13 +33,49 @@ router.post('/', async (req, res) => {
       internsAssigned: parseInt(internsAssigned) || 0,
     });
 
-    const newMentor = await mentor.save();
-    res.status(201).json(newMentor);
+    const savedMentor = await mentor.save();
+    res.status(201).json(savedMentor);
   } catch (err) {
     console.error('❌ Error saving mentor:', err.message);
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
+// ✅ PUT update mentor
+router.put('/:id', async (req, res) => {
+  console.log('📝 PUT mentor ID:', req.params.id);
+  console.log('📝 PUT body:', req.body);
 
+  try {
+    const mentor = await Mentor.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true, runValidators: true }
+    );
+
+    if (!mentor) {
+      return res.status(404).json({ message: 'Mentor not found' });
+    }
+
+    res.json(mentor);
+  } catch (err) {
+    console.error('❌ PUT error:', err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ✅ DELETE mentor
+router.delete('/:id', async (req, res) => {
+  console.log('🔴 DELETE request received for ID:', req.params.id);
+  try {
+    const mentor = await Mentor.findByIdAndDelete(req.params.id);
+    if (!mentor) {
+      return res.status(404).json({ message: 'Mentor not found' });
+    }
+    res.json({ message: 'Mentor deleted successfully!' });
+  } catch (err) {
+    console.error('❌ DELETE error:', err.message);
+    res.status(500).json({ message: 'Server error during deletion' });
+  }
+});
 module.exports = router;
