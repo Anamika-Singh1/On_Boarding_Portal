@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit } from 'lucide-react';
 
 const Mentor = ({ user, data, updateData, showToast }) => {
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingMentor, setEditingMentor] = useState(null);
   const [formData, setFormData] = useState({
@@ -13,61 +14,76 @@ const Mentor = ({ user, data, updateData, showToast }) => {
     internsAssigned: 0
   });
 
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-
   useEffect(() => {
     fetch(`${API_BASE_URL}/api/mentors`)
       .then(res => res.json())
-      .then(mentors => {
-        updateData('mentors', mentors);
-      })
+      .then(mentors => updateData('mentors', mentors))
       .catch(err => console.error('Error fetching mentors:', err));
   }, []);
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
+
     const skillsArray = formData.skills
       .split(',')
-      .map((s) => s.trim())
+      .map(s => s.trim())
       .filter(Boolean);
 
-    const updatedMentor = {
+    const payload = {
       ...formData,
       skills: skillsArray,
-      internsAssigned: parseInt(formData.internsAssigned),
+      internsAssigned: parseInt(formData.internsAssigned) || 0,
     };
 
-    const url = editingMentor
-      ? `${API_BASE_URL}/api/mentors/${editingMentor._id}`
-      : `${API_BASE_URL}/api/mentors`;
+    try {
+      const url = editingMentor
+        ? `${API_BASE_URL}/api/mentors/${editingMentor._id}`
+        : `${API_BASE_URL}/api/mentors`;
 
-    const method = editingMentor ? 'PUT' : 'POST';
+      const method = editingMentor ? 'PUT' : 'POST';
 
-    fetch(url, {
-      method,
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(updatedMentor),
-    })
-      .then(res => res.json())
-      .then(responseMentor => {
-        const updatedList = editingMentor
-          ? data.mentors.map(m => m._id === responseMentor._id ? responseMentor : m)
-          : [...data.mentors, responseMentor];
-
-        updateData('mentors', updatedList);
-        showToast(editingMentor ? 'Mentor updated successfully!' : 'Mentor added successfully!', 'success');
-        resetForm();
-      })
-      .catch(err => {
-        console.error('Mentor save error:', err);
-        showToast('Failed to save mentor.', 'error');
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
       });
+
+      const result = await res.json();
+
+      if (!res.ok) {
+        showToast(result.message || 'Something went wrong', 'error');
+        return;
+      }
+
+      if (editingMentor) {
+        const updatedList = data.mentors.map(m =>
+          m._id === result._id ? result : m
+        );
+        updateData('mentors', updatedList);
+        showToast('Mentor updated successfully!', 'success');
+      } else {
+        updateData('mentors', [...data.mentors, result]);
+        showToast('Mentor added successfully!', 'success');
+      }
+
+      resetForm();
+    } catch (error) {
+      console.error('Error submitting mentor:', error);
+      showToast('Server error. Please try again.', 'error');
+    }
   };
 
   const resetForm = () => {
     setIsModalOpen(false);
     setEditingMentor(null);
-    setFormData({ name: '', department: '', field: '', project: '', skills: '', internsAssigned: 0 });
+    setFormData({
+      name: '',
+      department: '',
+      field: '',
+      project: '',
+      skills: '',
+      internsAssigned: 0
+    });
   };
 
   const handleEdit = (mentor) => {
@@ -78,29 +94,26 @@ const Mentor = ({ user, data, updateData, showToast }) => {
       field: mentor.field,
       project: mentor.project,
       skills: mentor.skills.join(', '),
-      internsAssigned: mentor.internsAssigned,
+      internsAssigned: mentor.internsAssigned || 0,
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (mentorId) => {
-    fetch(`${API_BASE_URL}/api/mentors/${mentorId}`, {
-      method: 'DELETE'
-    })
-      .then(() => {
-        updateData('mentors', data.mentors.filter((mentor) => mentor._id !== mentorId));
-        showToast('Mentor deleted successfully!', 'success');
-      })
-      .catch(err => {
-        console.error('Mentor delete error:', err);
-        showToast('Failed to delete mentor.', 'error');
-      });
+  const handleDelete = async (mentorId) => {
+    try {
+      await fetch(`${API_BASE_URL}/api/mentors/${mentorId}`, { method: 'DELETE' });
+      updateData('mentors', data.mentors.filter(m => m._id !== mentorId));
+      showToast('Mentor deleted successfully!', 'success');
+    } catch (err) {
+      console.error('Error deleting mentor:', err);
+      showToast('Failed to delete mentor', 'error');
+    }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mentors Information</h1>
+        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Mentors</h1>
         {user.role === 'manager' && (
           <button
             onClick={() => setIsModalOpen(true)}
@@ -133,7 +146,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                 )}
               </div>
 
-              <div className="space-y-2 text-gray-700 dark:text-gray-300">
+              <div className="text-gray-700 dark:text-gray-300 space-y-2">
                 <div><strong>Department:</strong> {mentor.department}</div>
                 <div><strong>Field:</strong> {mentor.field}</div>
                 <div><strong>Project:</strong> {mentor.project}</div>
@@ -141,27 +154,21 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                   <strong>Skills:</strong>
                   <div className="flex flex-wrap gap-2 mt-1">
                     {mentor.skills.map((skill, i) => (
-                      <span
-                        key={i}
-                        className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 rounded-full text-sm"
-                      >
+                      <span key={i} className="px-2 py-1 bg-blue-100 dark:bg-blue-900 text-blue-800 dark:text-blue-300 rounded-full text-sm">
                         {skill}
                       </span>
                     ))}
                   </div>
                 </div>
-
-                <div className="mt-4">
-                  <strong>Assigned Interns:</strong>
+                <div>
+                  <strong>Interns:</strong>
                   {assignedInterns.length > 0 ? (
-                    <ul className="list-disc list-inside text-sm mt-1">
-                      {assignedInterns.map((intern) => (
-                        <li key={intern.id}>{intern.name} ({intern.email})</li>
+                    <ul className="list-disc list-inside text-sm">
+                      {assignedInterns.map((i) => (
+                        <li key={i.id}>{i.name} ({i.email})</li>
                       ))}
                     </ul>
-                  ) : (
-                    <p className="text-sm text-gray-500">No interns assigned.</p>
-                  )}
+                  ) : <p className="text-sm text-gray-500">No interns assigned</p>}
                 </div>
               </div>
             </div>
@@ -188,17 +195,10 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                 />
               ))}
               <div className="flex space-x-4">
-                <button
-                  type="submit"
-                  className="bg-green-600 text-white px-4 py-2 rounded w-full"
-                >
+                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded w-full">
                   {editingMentor ? 'Update' : 'Add'} Mentor
                 </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="bg-gray-400 text-white px-4 py-2 rounded w-full"
-                >
+                <button type="button" onClick={resetForm} className="bg-gray-400 text-white px-4 py-2 rounded w-full">
                   Cancel
                 </button>
               </div>
