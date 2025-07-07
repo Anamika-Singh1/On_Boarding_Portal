@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Card, Input, Button } from '@/components/ui';
 import { Plus, Trash2 } from 'lucide-react';
 import getYouTubeVideoId from '@/utils/getYouTubeVideoId';
-import { FaLinkedin, FaTwitter, FaGlobe } from "react-icons/fa";
 
 const HomePage = ({ user, data, updateData, showToast }) => {
   const [newVideoUrl, setNewVideoUrl] = useState('');
@@ -45,43 +44,43 @@ const HomePage = ({ user, data, updateData, showToast }) => {
         </section>
 
         {/* Links and Video Form */}
-       <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
-  {/* Official Links */}
-      <Card className="p-6 shadow-lg">
-        <h2 className="text-2xl font-semibold mb-4 dark:text-white">Official Links</h2>
-        <ul className="space-y-3">
-          <li>
-            <a
-              href="https://linkedin.com/company/aiensured"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:underline dark:text-blue-400"
-            >
-              <FaLinkedin /> LinkedIn
-            </a>
-          </li>
-          <li>
-            <a
-              href="https://twitter.com/aiensured"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:underline dark:text-blue-400"
-            >
-              <FaTwitter /> Twitter
-            </a>
-          </li>
-          <li>
-            <a
-              href="https://aiensured.com"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="flex items-center gap-2 text-blue-600 hover:underline dark:text-blue-400"
-            >
-              <FaGlobe /> Official Website
-            </a>
-          </li>
-        </ul>
-      </Card>
+        <section className="grid grid-cols-1 md:grid-cols-2 gap-8">
+          {/* Official Links */}
+          <Card className="p-6 shadow-lg">
+            <h2 className="text-2xl font-semibold mb-4 dark:text-white">Official Links</h2>
+            <ul className="space-y-3">
+              <li>
+                <a
+                  href="https://linkedin.com/company/aiensured"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  LinkedIn
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://twitter.com/aiensured"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Twitter
+                </a>
+              </li>
+              <li>
+                <a
+                  href="https://aiensured.com"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-blue-600 hover:underline dark:text-blue-400"
+                >
+                  Official Website
+                </a>
+              </li>
+            </ul>
+          </Card>
 
           {/* Video Form for Managers */}
           {user.role === 'manager' && (
