@@ -21,6 +21,7 @@ const ThemeContext = createContext();
 
 // 🔧 Set up API base URL from environment
 const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+
 export default function App() {
   const [user, setUser] = useState(null);
   const [currentPage, setCurrentPage] = useState("home");
