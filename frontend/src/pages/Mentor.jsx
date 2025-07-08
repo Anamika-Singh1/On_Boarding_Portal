@@ -141,10 +141,13 @@ const Mentor = ({ user, data, updateData, showToast }) => {
 
       <div className="grid md:grid-cols-2 gap-6">
         {data.mentors.map((mentor) => {
-          const assignedInterns = data.interns?.filter(
-            (intern) => intern.mentorId === mentor._id
-          ) || [];
-
+     const assignedInterns = (data.interns || []).filter((intern) => {
+      if (!intern.mentorId) return false;
+      if (typeof intern.mentorId === 'object') {
+        return intern.mentorId._id === mentor._id;
+      }
+      return intern.mentorId === mentor._id;
+    });
           return (
             <div key={mentor._id} className="border rounded p-4 shadow bg-white dark:bg-gray-800">
               <div className="flex justify-between items-start mb-4">
