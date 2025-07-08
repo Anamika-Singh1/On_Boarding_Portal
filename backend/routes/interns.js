@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Intern = require('../models/Intern');
 
-// Get all interns
+// ✅ Get all interns with mentor populated
 router.get('/', async (req, res) => {
   try {
     const interns = await Intern.find().populate('mentorId');
@@ -12,7 +12,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Add a new intern
+// ✅ Create new intern
 router.post('/', async (req, res) => {
   try {
     const intern = new Intern(req.body);
@@ -23,29 +23,22 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update intern
+// ✅ Update intern
 router.put('/:id', async (req, res) => {
   try {
     const intern = await Intern.findById(req.params.id);
     if (!intern) return res.status(404).json({ message: 'Intern not found' });
 
-    const oldMentorId = intern.mentorId.toString();
-    const newMentorId = req.body.mentorId;
-
     Object.assign(intern, req.body);
-    await intern.save();
-
-    if (oldMentorId !== newMentorId) {
-      await Intern.emit('remove', { mentorId: oldMentorId }); // manually trigger count update
-    }
-
-    res.json(intern);
+    const updated = await intern.save();
+    const populated = await Intern.findById(updated._id).populate('mentorId');
+    res.json(populated);
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
 });
 
-// Delete intern
+// ✅ Delete intern
 router.delete('/:id', async (req, res) => {
   try {
     const intern = await Intern.findById(req.params.id);
