@@ -10,8 +10,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
     department: '',
     field: '',
     project: '',
-    skills: '',
-    internsAssigned: 0
+    skills: ''
   });
 
   const fetchMentors = async () => {
@@ -38,8 +37,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
 
     const payload = {
       ...formData,
-      skills: skillsArray,
-      internsAssigned: parseInt(formData.internsAssigned) || 0,
+      skills: skillsArray
     };
 
     try {
@@ -79,8 +77,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
       department: '',
       field: '',
       project: '',
-      skills: '',
-      internsAssigned: 0
+      skills: ''
     });
   };
 
@@ -91,8 +88,7 @@ const Mentor = ({ user, data, updateData, showToast }) => {
       department: mentor.department || '',
       field: mentor.field,
       project: mentor.project,
-      skills: mentor.skills.join(', '),
-      internsAssigned: mentor.internsAssigned || 0,
+      skills: mentor.skills.join(', ')
     });
     setIsModalOpen(true);
   };
@@ -180,14 +176,16 @@ const Mentor = ({ user, data, updateData, showToast }) => {
                   </div>
                 </div>
                 <div>
-                  <strong>Interns:</strong>
-                  {assignedInterns.length > 0 ? (
-                    <ul className="list-disc list-inside text-sm">
+                  <strong>Number of Interns:</strong> {assignedInterns.length}
+                </div>
+                <div>
+                  {assignedInterns.length > 0 && (
+                    <ul className="list-disc list-inside text-sm mt-1">
                       {assignedInterns.map((i) => (
-                        <li key={i.id}>{i.name} ({i.email})</li>
+                        <li key={i._id || i.id}>{i.name} ({i.email})</li>
                       ))}
                     </ul>
-                  ) : <p className="text-sm text-gray-500">No interns assigned</p>}
+                  )}
                 </div>
               </div>
             </div>
@@ -202,10 +200,10 @@ const Mentor = ({ user, data, updateData, showToast }) => {
               {editingMentor ? 'Edit Mentor' : 'Add Mentor'}
             </h2>
             <form onSubmit={handleSubmit} className="space-y-4">
-              {['name', 'department', 'field', 'project', 'skills', 'internsAssigned'].map((field) => (
+              {['name', 'department', 'field', 'project', 'skills'].map((field) => (
                 <input
                   key={field}
-                  type={field === 'internsAssigned' ? 'number' : 'text'}
+                  type="text"
                   value={formData[field]}
                   onChange={(e) => setFormData({ ...formData, [field]: e.target.value })}
                   placeholder={field === 'skills' ? 'Python, React' : `Enter ${field}`}

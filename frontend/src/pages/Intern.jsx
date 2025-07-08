@@ -1,7 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Plus, Trash2, Edit } from 'lucide-react';
 
 const Intern = ({ user, data, updateData, showToast }) => {
+  const API_BASE_URL = import.meta.env.VITE_API_URL;
+
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIntern, setEditingIntern] = useState(null);
   const [formData, setFormData] = useState({
@@ -17,27 +19,52 @@ const Intern = ({ user, data, updateData, showToast }) => {
     setIsModalOpen(false);
   };
 
-  const handleSubmit = (e) => {
+  const fetchInterns = async () => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/interns`);
+      const interns = await res.json();
+      updateData('interns', interns);
+    } catch (error) {
+      console.error('Error fetching interns:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchInterns();
+  }, []);
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
 
-    const newIntern = {
-      ...formData,
-      id: editingIntern ? editingIntern.id : Date.now(),
-      mentorId: parseInt(formData.mentorId)
+    const payload = {
+      name: formData.name,
+      email: formData.email,
+      department: formData.department,
+      mentorId: formData.mentorId,
     };
 
-    if (editingIntern) {
-      const updated = (data?.interns || []).map((i) =>
-        i.id === editingIntern.id ? newIntern : i
-      );
-      updateData('interns', updated);
-      showToast('Intern updated!', 'success');
-    } else {
-      updateData('interns', [...(data?.interns || []), newIntern]);
-      showToast('Intern added!', 'success');
-    }
+    const method = editingIntern ? 'PUT' : 'POST';
+    const url = editingIntern
+      ? `${API_BASE_URL}/api/interns/${editingIntern._id}`
+      : `${API_BASE_URL}/api/interns`;
 
-    resetForm();
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || 'Something went wrong');
+
+      showToast(editingIntern ? 'Intern updated!' : 'Intern added!', 'success');
+      fetchInterns();
+      resetForm();
+    } catch (err) {
+      console.error('Intern submit error:', err);
+      showToast('Failed to save intern', 'error');
+    }
   };
 
   const handleEdit = (intern) => {
@@ -46,14 +73,24 @@ const Intern = ({ user, data, updateData, showToast }) => {
       name: intern.name,
       email: intern.email,
       department: intern.department,
-      mentorId: intern.mentorId.toString()
+      mentorId: intern.mentorId
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
-    updateData('interns', (data?.interns || []).filter((i) => i.id !== id));
-    showToast('Intern deleted successfully!', 'success');
+  const handleDelete = async (_id) => {
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/interns/${_id}`, {
+        method: 'DELETE'
+      });
+      const result = await res.json();
+      if (!res.ok) throw new Error(result.message || 'Delete failed');
+      showToast('Intern deleted successfully!', 'success');
+      fetchInterns();
+    } catch (err) {
+      console.error('Delete error:', err);
+      showToast('Failed to delete intern', 'error');
+    }
   };
 
   return (
@@ -72,12 +109,9 @@ const Intern = ({ user, data, updateData, showToast }) => {
 
       <div className="grid md:grid-cols-2 gap-6">
         {(data?.interns || []).map((intern) => {
-          const mentor = (data?.mentors || []).find((m) => m.id === intern.mentorId);
+          const mentor = (data?.mentors || []).find((m) => m._id === intern.mentorId);
           return (
-            <div
-              key={intern.id}
-              className="border rounded p-4 shadow bg-white dark:bg-gray-800"
-            >
+            <div key={intern._id} className="border rounded p-4 shadow bg-white dark:bg-gray-800">
               <div className="flex justify-between items-start mb-2">
                 <h2 className="text-xl font-semibold dark:text-white">{intern.name}</h2>
                 {user.role === 'manager' && (
@@ -85,7 +119,7 @@ const Intern = ({ user, data, updateData, showToast }) => {
                     <button onClick={() => handleEdit(intern)} className="text-blue-600 hover:text-blue-800">
                       <Edit size={16} />
                     </button>
-                    <button onClick={() => handleDelete(intern.id)} className="text-red-600 hover:text-red-800">
+                    <button onClick={() => handleDelete(intern._id)} className="text-red-600 hover:text-red-800">
                       <Trash2 size={16} />
                     </button>
                   </div>
@@ -143,7 +177,9 @@ const Intern = ({ user, data, updateData, showToast }) => {
               >
                 <option value="">Select Mentor</option>
                 {(data?.mentors || []).map((mentor) => (
-                  <option key={mentor.id} value={mentor.id}>{mentor.name} - {mentor.field}</option>
+                  <option key={mentor._id} value={mentor._id}>
+                    {mentor.name} - {mentor.field}
+                  </option>
                 ))}
               </select>
 
