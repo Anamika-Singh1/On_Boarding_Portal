@@ -1,16 +1,33 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import Card from "@/components/ui/Card";
 import Button from "@/components/ui/Button";
 import Input from "@/components/ui/Input";
 import { Plus, Trash2 } from "lucide-react";
 
-
-const UserPage = ({ user, data, updateData, showToast }) => {
+const UserPage = ({ showToast }) => {
   const [showForm, setShowForm] = useState(false);
   const [roleChoice, setRoleChoice] = useState("");
   const [formData, setFormData] = useState({ name: "", email: "" });
+  const [users, setUsers] = useState([]);
 
-  const handleAddUser = () => {
+  // ✅ Fetch users from backend on mount
+  useEffect(() => {
+    const fetchUsers = async () => {
+      try {
+        const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`);
+        const data = await res.json();
+        setUsers(data);
+      } catch (err) {
+        console.error("❌ Fetch error:", err);
+        showToast("Failed to load users", "error");
+      }
+    };
+
+    fetchUsers();
+  }, []);
+
+  // ✅ Add user to backend
+  const handleAddUser = async () => {
     const { name, email } = formData;
 
     if (!name || !email || !roleChoice) {
@@ -18,26 +35,46 @@ const UserPage = ({ user, data, updateData, showToast }) => {
       return;
     }
 
-    const newUser = {
-      id: Date.now().toString(),
-      name,
-      email,
-      role: roleChoice,
-    };
+    const newUser = { name, email, role: roleChoice };
 
-    updateData({ ...data, users: [...data.users, newUser] });
-    showToast("User added successfully!", "success");
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(newUser),
+      });
 
-    // Reset
-    setFormData({ name: "", email: "" });
-    setRoleChoice("");
-    setShowForm(false);
+      const savedUser = await res.json();
+      if (!res.ok) throw new Error(savedUser.message);
+
+      setUsers((prev) => [...prev, savedUser]);
+      showToast("User added successfully!", "success");
+
+      // Reset form
+      setFormData({ name: "", email: "" });
+      setRoleChoice("");
+      setShowForm(false);
+    } catch (err) {
+      console.error("❌ Add error:", err);
+      showToast(err.message || "Failed to add user", "error");
+    }
   };
 
-  const handleRemoveUser = (id) => {
-    const updatedUsers = data.users.filter((u) => u.id !== id);
-    updateData({ ...data, users: updatedUsers });
-    showToast("User removed successfully!", "success");
+  // ✅ Delete user from backend
+  const handleRemoveUser = async (id) => {
+    try {
+      const res = await fetch(`${import.meta.env.VITE_API_URL}/api/users/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!res.ok) throw new Error("Delete failed");
+
+      setUsers((prev) => prev.filter((u) => u._id !== id));
+      showToast("User removed successfully!", "success");
+    } catch (err) {
+      console.error("❌ Delete error:", err);
+      showToast("Failed to remove user", "error");
+    }
   };
 
   return (
@@ -96,23 +133,22 @@ const UserPage = ({ user, data, updateData, showToast }) => {
       )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.isArray(data.users) &&
-          data.users.map((u) => (
-            <Card key={u.id} className="p-4 space-y-2 shadow rounded-2xl">
-              <h3 className="text-lg font-semibold">{u.name}</h3>
-              <p className="text-sm text-gray-500">{u.email}</p>
-              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{u.role}</p>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="mt-2"
-                onClick={() => handleRemoveUser(u.id)}
-              >
-                <Trash2 size={16} className="mr-1" />
-                Remove
-              </Button>
-            </Card>
-          ))}
+        {users.map((u) => (
+          <Card key={u._id} className="p-4 space-y-2 shadow rounded-2xl">
+            <h3 className="text-lg font-semibold">{u.name}</h3>
+            <p className="text-sm text-gray-500">{u.email}</p>
+            <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{u.role}</p>
+            <Button
+              variant="destructive"
+              size="sm"
+              className="mt-2"
+              onClick={() => handleRemoveUser(u._id)}
+            >
+              <Trash2 size={16} className="mr-1" />
+              Remove
+            </Button>
+          </Card>
+        ))}
       </div>
     </div>
   );
