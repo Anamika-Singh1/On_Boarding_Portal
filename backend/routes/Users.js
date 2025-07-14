@@ -1,19 +1,24 @@
+// backend/routes/users.js
+
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 
-// GET all users
+// ✅ GET all users
 router.get("/", async (req, res) => {
-  try {
-    const users = await User.find().sort({ createdAt: -1 });
-    res.json(users);
-  } catch (err) {
-    console.error("GET /users error:", err);
-    res.status(500).json({ message: "Server error" });
-  }
+  const users = await User.find().sort({ createdAt: -1 });
+  res.json(users);
 });
 
-// POST create a user
+// ✅ GET user by ID
+router.get("/:id", async (req, res) => {
+  const user = await User.findById(req.params.id);
+  res.json(user);
+});
+
+
+
+// ✅ POST create a user
 router.post("/", async (req, res) => {
   try {
     const { name, email, role } = req.body;
@@ -35,7 +40,7 @@ router.post("/", async (req, res) => {
   }
 });
 
-// DELETE user by ID
+// ✅ DELETE user by ID
 router.delete("/:id", async (req, res) => {
   try {
     await User.findByIdAndDelete(req.params.id);
