@@ -7,7 +7,7 @@ const app = express();
 
 // ✅ Middleware
 app.use(cors({
-  origin: "https://on-boarding-portal-aiensured.vercel.app", // ✅ Your deployed frontend URL
+  origin: "https://on-boarding-portal-aiensured.vercel.app",
   methods: ["GET", "POST", "PUT", "DELETE"],
   allowedHeaders: ["Content-Type", "Authorization"],
   credentials: true,
@@ -20,14 +20,14 @@ const authRoutes = require("./routes/authRoutes");
 const eventRoutes = require("./routes/events");
 const mentorRoutes = require("./routes/mentors");
 const internRoutes = require("./routes/interns");
-const userRoutes = require("./routes/users"); // ✅ NEW
+const userRoutes = require("./routes/users"); // ✅ this was missing
 
 // ✅ Mount routes
 app.use("/api/auth", authRoutes);
 app.use("/api/events", eventRoutes);
 app.use("/api/mentors", mentorRoutes);
 app.use("/api/interns", internRoutes);
-app.use("/api/users", userRoutes); // ✅ NEW
+app.use("/api/users", userRoutes); // ✅ mount new user route
 
 // ✅ Default root route
 app.get("/", (req, res) => {
