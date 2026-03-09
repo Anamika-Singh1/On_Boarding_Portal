@@ -1,15 +1,17 @@
 const express = require('express');
 const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
+const nodemailer = require('nodemailer');
 const User = require('../models/User');
 
 const router = express.Router();
 
+// ======================
 // 🔐 REGISTER
+// ======================
 router.post('/register', async (req, res) => {
   try {
     const { name, email, password, role } = req.body;
-
     if (!name || !email || !password || !role) {
       return res.status(400).json({ message: 'All fields are required' });
     }
@@ -20,14 +22,7 @@ router.post('/register', async (req, res) => {
     }
 
     const hashedPassword = await bcrypt.hash(password, 10);
-
-    const newUser = new User({
-      name,
-      email,
-      password: hashedPassword,
-      role,
-    });
-
+    const newUser = new User({ name, email, password: hashedPassword, role });
     await newUser.save();
 
     res.status(201).json({ message: 'User registered successfully' });
@@ -37,35 +32,32 @@ router.post('/register', async (req, res) => {
   }
 });
 
+// ======================
 // 🔐 LOGIN
+// ======================
 router.post('/login', async (req, res) => {
   try {
     const { email, password, role } = req.body;
-
     const user = await User.findOne({ email, role });
     if (!user) return res.status(404).json({ message: 'User not found or role mismatch' });
 
     const isMatch = await bcrypt.compare(password, user.password);
     if (!isMatch) return res.status(401).json({ message: 'Incorrect password' });
 
-    const token = jwt.sign(
-      { id: user._id, role: user.role },
-      process.env.JWT_SECRET,
-      { expiresIn: '1d' }
-    );
-
-    res.json({
-      token,
-      user: { name: user.name, email: user.email, role: user.role },
+    const token = jwt.sign({ id: user._id, role: user.role }, process.env.JWT_SECRET, {
+      expiresIn: '1d',
     });
+
+    res.json({ token, user: { name: user.name, email: user.email, role: user.role } });
   } catch (err) {
     console.error('Login error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });
-// 🔄 FORGOT PASSWORD
-const nodemailer = require('nodemailer');
 
+// ======================
+// 🔄 FORGOT PASSWORD
+// ======================
 router.post('/forgot', async (req, res) => {
   try {
     const { email } = req.body;
@@ -74,13 +66,8 @@ router.post('/forgot', async (req, res) => {
     const user = await User.findOne({ email });
     if (!user) return res.status(404).json({ message: 'User not found' });
 
-    // Create reset token
-    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, {
-      expiresIn: '15m',
-    });
-
-    const resetLink = `http://localhost:5173/reset-password/${resetToken}`;
-    console.log('Reset link:', resetLink);
+    const resetToken = jwt.sign({ id: user._id }, process.env.JWT_SECRET, { expiresIn: '15m' });
+    const resetLink = `/reset-password/${resetToken}`; // relative path only
 
     // Configure nodemailer
     const transporter = nodemailer.createTransport({
@@ -98,32 +85,35 @@ router.post('/forgot', async (req, res) => {
       html: `<p>Click <a href="${resetLink}">here</a> to reset your password. Link expires in 15 mins.</p>`,
     });
 
+    console.log('Reset link:', resetLink);
     res.status(200).json({ message: 'Reset link sent to your email' });
   } catch (err) {
     console.error('Forgot password error:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });
-router.post('/reset/:token', async (req, res) => {
-    try {
-      const { token } = req.params;
-      const { password } = req.body;
-  
-      const decoded = jwt.verify(token, process.env.JWT_SECRET);
-      const user = await User.findById(decoded.id);
-      if (!user) return res.status(404).json({ message: 'User not found' });
-  
-      const hashedPassword = await bcrypt.hash(password, 10);
-      user.password = hashedPassword;
-      await user.save();
-  
-      res.status(200).json({ message: 'Password reset successful' });
-    } catch (err) {
-      console.error('Reset password error:', err.message);
-      res.status(500).json({ message: 'Invalid or expired token' });
-    }
-  });
-  
 
+// ======================
+// 🔄 RESET PASSWORD
+// ======================
+router.post('/reset/:token', async (req, res) => {
+  try {
+    const { token } = req.params;
+    const { password } = req.body;
+
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.id);
+    if (!user) return res.status(404).json({ message: 'User not found' });
+
+    const hashedPassword = await bcrypt.hash(password, 10);
+    user.password = hashedPassword;
+    await user.save();
+
+    res.status(200).json({ message: 'Password reset successful' });
+  } catch (err) {
+    console.error('Reset password error:', err.message);
+    res.status(500).json({ message: 'Invalid or expired token' });
+  }
+});
 
 module.exports = router;

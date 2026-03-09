@@ -2,7 +2,9 @@ const express = require('express');
 const router = express.Router();
 const Event = require('../models/Event');
 
+// ======================
 // ✅ GET: Fetch all events & auto-update expired ones
+// ======================
 router.get('/', async (req, res) => {
   try {
     const events = await Event.find();
@@ -27,16 +29,15 @@ router.get('/', async (req, res) => {
     const updatedEvents = await Event.find(); // fetch again after updates
     res.json(updatedEvents);
   } catch (err) {
-    console.error("❌ Error in GET /api/events:", err.message);
+    console.error('❌ Error in GET /api/events:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-
+// ======================
 // ✅ POST: Create a new event
+// ======================
 router.post('/', async (req, res) => {
-  console.log("Incoming event data:", req.body);
-
   const {
     name,
     description,
@@ -73,7 +74,21 @@ router.post('/', async (req, res) => {
     await newEvent.save();
     res.status(201).json(newEvent);
   } catch (err) {
-    console.error("❌ Error in POST /api/events:", err.message);
+    console.error('❌ Error in POST /api/events:', err.message);
+    res.status(500).json({ message: 'Server error' });
+  }
+});
+
+// ======================
+// ✅ GET: Fetch a single event by ID
+// ======================
+router.get('/:id', async (req, res) => {
+  try {
+    const event = await Event.findById(req.params.id);
+    if (!event) return res.status(404).json({ message: 'Event not found' });
+    res.json(event);
+  } catch (err) {
+    console.error('❌ Error in GET /api/events/:id:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });

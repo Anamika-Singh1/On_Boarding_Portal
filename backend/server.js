@@ -34,7 +34,7 @@ const corsOptions = {
 app.use(cors(corsOptions));
 
 // ✅ Handle preflight requests correctly
-app.options("*", cors(corsOptions));
+app.use(cors(corsOptions));
 
 /* =======================
    🔥 EXTRA SAFETY HEADERS

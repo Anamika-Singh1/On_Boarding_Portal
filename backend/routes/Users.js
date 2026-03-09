@@ -1,28 +1,40 @@
-// backend/routes/users.js
-
 const express = require("express");
 const router = express.Router();
 const User = require("../models/User");
 
-// ✅ GET all users
+// ======================
+// ✅ GET all users (most recent first)
+// ======================
 router.get("/", async (req, res) => {
-  const users = await User.find().sort({ createdAt: -1 });
-  res.json(users);
+  try {
+    const users = await User.find().sort({ createdAt: -1 });
+    res.json(users);
+  } catch (err) {
+    console.error("❌ GET /users error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
-// ✅ GET user by ID
+// ======================
+// ✅ GET a single user by ID
+// ======================
 router.get("/:id", async (req, res) => {
-  const user = await User.findById(req.params.id);
-  res.json(user);
+  try {
+    const user = await User.findById(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json(user);
+  } catch (err) {
+    console.error("❌ GET /users/:id error:", err.message);
+    res.status(500).json({ message: "Server error" });
+  }
 });
 
-
-
-// ✅ POST create a user
+// ======================
+// ✅ POST: Create a new user
+// ======================
 router.post("/", async (req, res) => {
   try {
     const { name, email, role } = req.body;
-
     if (!name || !email || !role) {
       return res.status(400).json({ message: "All fields are required" });
     }
@@ -35,18 +47,21 @@ router.post("/", async (req, res) => {
     const user = await User.create({ name, email, role });
     res.status(201).json(user);
   } catch (err) {
-    console.error("POST /users error:", err);
+    console.error("❌ POST /users error:", err.message);
     res.status(500).json({ message: "Failed to add user" });
   }
 });
 
-// ✅ DELETE user by ID
+// ======================
+// ✅ DELETE: Remove a user by ID
+// ======================
 router.delete("/:id", async (req, res) => {
   try {
-    await User.findByIdAndDelete(req.params.id);
-    res.json({ message: "User deleted" });
+    const user = await User.findByIdAndDelete(req.params.id);
+    if (!user) return res.status(404).json({ message: "User not found" });
+    res.json({ message: "User deleted successfully" });
   } catch (err) {
-    console.error("DELETE /users error:", err);
+    console.error("❌ DELETE /users/:id error:", err.message);
     res.status(500).json({ message: "Failed to delete user" });
   }
 });

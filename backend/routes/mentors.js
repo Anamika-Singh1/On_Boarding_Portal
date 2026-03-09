@@ -1,22 +1,24 @@
-// routes/mentors.js
 const express = require('express');
 const router = express.Router();
 const Mentor = require('../models/Mentor');
 
-// ✅ GET all mentors
+// ======================
+// ✅ GET: Fetch all mentors
+// ======================
 router.get('/', async (req, res) => {
   try {
     const mentors = await Mentor.find();
     res.json(mentors);
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error('❌ Error in GET /api/mentors:', err.message);
+    res.status(500).json({ message: 'Server error' });
   }
 });
 
-// ✅ POST create mentor
+// ======================
+// ✅ POST: Create a new mentor
+// ======================
 router.post('/', async (req, res) => {
-  console.log('📥 Mentor POST body:', req.body);
-
   try {
     const { name, department, field, project, skills, internsAssigned } = req.body;
 
@@ -41,11 +43,10 @@ router.post('/', async (req, res) => {
   }
 });
 
-// ✅ PUT update mentor
+// ======================
+// ✅ PUT: Update a mentor by ID
+// ======================
 router.put('/:id', async (req, res) => {
-  console.log('📝 PUT mentor ID:', req.params.id);
-  console.log('📝 PUT body:', req.body);
-
   try {
     const mentor = await Mentor.findByIdAndUpdate(
       req.params.id,
@@ -59,14 +60,15 @@ router.put('/:id', async (req, res) => {
 
     res.json(mentor);
   } catch (err) {
-    console.error('❌ PUT error:', err.message);
+    console.error('❌ Error updating mentor:', err.message);
     res.status(500).json({ message: 'Server error' });
   }
 });
 
-// ✅ DELETE mentor
+// ======================
+// ✅ DELETE: Remove a mentor by ID
+// ======================
 router.delete('/:id', async (req, res) => {
-  console.log('🔴 DELETE request received for ID:', req.params.id);
   try {
     const mentor = await Mentor.findByIdAndDelete(req.params.id);
     if (!mentor) {
@@ -74,8 +76,9 @@ router.delete('/:id', async (req, res) => {
     }
     res.json({ message: 'Mentor deleted successfully!' });
   } catch (err) {
-    console.error('❌ DELETE error:', err.message);
-    res.status(500).json({ message: 'Server error during deletion' });
+    console.error('❌ Error deleting mentor:', err.message);
+    res.status(500).json({ message: 'Server error' });
   }
 });
+
 module.exports = router;

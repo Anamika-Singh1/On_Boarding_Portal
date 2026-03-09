@@ -9,8 +9,17 @@ const eventSchema = new mongoose.Schema({
   endTime: { type: String, trim: true },   // optional
   purpose: { type: String, trim: true },   // optional
   eventCoordinator: { type: String, trim: true }, // optional
-  calendarLink: { type: String, trim: true }, // optional
-  teamMembers: { type: [String], required: true }
+  calendarLink: { type: String, trim: true },     // optional
+  teamMembers: {
+    type: [String],
+    required: true,
+    validate: {
+      validator: function(arr) {
+        return Array.isArray(arr) && arr.length > 0;
+      },
+      message: 'At least one team member is required'
+    }
+  }
 }, { timestamps: true });
 
 module.exports = mongoose.model('Event', eventSchema);
