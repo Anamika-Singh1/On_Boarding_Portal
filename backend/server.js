@@ -14,6 +14,7 @@ const allowedOrigins = [
   "https://on-boarding-portal-aiensured.vercel.app",
   "https://on-boarding-portal-dsaq.vercel.app",
   "https://on-boarding-portal-dsaq-d14l95n1k-anuritgithubs-projects.vercel.app",
+  "https://on-boarding-portal-dsaq-r6ubdxfxe-anuritgithubs-projects.vercel.app",
   ...(process.env.ALLOWED_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean)
 ];
 
