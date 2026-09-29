@@ -1,3 +1,4 @@
+import { API_BASE_URL as configuredApiBaseUrl } from '../utils/api';
 import React, { useEffect, useRef, useState } from 'react';
 import { Plus, Edit, Trash2, Bell, CalendarDays, Search, Link as LinkIcon } from 'lucide-react';
 import {
@@ -86,7 +87,7 @@ const EventCard = ({ event, isManager, onEdit, onDelete }) => (
 );
 
 const EventsPage = ({ user, data, updateData, showToast }) => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+  const API_BASE_URL = configuredApiBaseUrl;
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);

@@ -1,3 +1,4 @@
+import { API_BASE_URL as configuredApiBaseUrl } from '../utils/api';
 import React, { useState, useEffect } from 'react';
 import fetchList from '@/utils/fetchList';
 import { Plus, Trash2, Edit, GraduationCap } from 'lucide-react';
@@ -21,7 +22,7 @@ const emptyForm = { name: '', email: '', department: '', mentorId: '' };
 const mentorIdOf = (mentorId) => (mentorId && typeof mentorId === 'object' ? mentorId._id : mentorId || '');
 
 const Intern = ({ user, data, updateData, showToast }) => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+  const API_BASE_URL = configuredApiBaseUrl;
   const [loading, setLoading] = useState(true);
   const [loadError, setLoadError] = useState(false);
   const [submitting, setSubmitting] = useState(false);

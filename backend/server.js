@@ -11,7 +11,10 @@ const app = express();
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:5174",
-  "https://on-boarding-portal-aiensured.vercel.app"
+  "https://on-boarding-portal-aiensured.vercel.app",
+  "https://on-boarding-portal-dsaq.vercel.app",
+  "https://on-boarding-portal-dsaq-d14l95n1k-anuritgithubs-projects.vercel.app",
+  ...(process.env.ALLOWED_ORIGINS || '').split(',').map(origin => origin.trim()).filter(Boolean)
 ];
 
 const corsOptions = {
@@ -30,36 +33,10 @@ const corsOptions = {
   credentials: true
 };
 
-// ✅ Apply CORS middleware
+// Application-level CORS also handles OPTIONS preflight requests.
 app.use(cors(corsOptions));
 
-// ✅ Handle preflight requests correctly
-app.use(cors(corsOptions));
-
-/* =======================
-   🔥 EXTRA SAFETY HEADERS
-======================= */
-app.use((req, res, next) => {
-  const origin = req.headers.origin;
-
-  if (allowedOrigins.includes(origin)) {
-    res.header("Access-Control-Allow-Origin", origin);
-  }
-
-  res.header("Access-Control-Allow-Credentials", "true");
-  res.header("Access-Control-Allow-Headers", "Origin, X-Requested-With, Content-Type, Accept, Authorization");
-  res.header("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS");
-
-  if (req.method === "OPTIONS") {
-    return res.sendStatus(200);
-  }
-
-  next();
-});
-
-/* =======================
-   BODY PARSER
-======================= */
+// Body parser
 app.use(express.json({ limit: '1mb' }));
 app.use(express.urlencoded({ extended: true }));
 

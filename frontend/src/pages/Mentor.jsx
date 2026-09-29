@@ -1,3 +1,4 @@
+import { API_BASE_URL as configuredApiBaseUrl } from '../utils/api';
 import React, { useState, useEffect } from 'react';
 import fetchList from '@/utils/fetchList';
 import { Plus, Trash2, Edit, Users as UsersIcon, Search, ArrowUpRight, GraduationCap, Building2, Briefcase, Sparkles, X } from 'lucide-react';
@@ -16,7 +17,7 @@ import {
 const emptyForm = { name: '', department: '', field: '', project: '', skills: '' };
 
 const Mentor = ({ user, data, updateData, showToast }) => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+  const API_BASE_URL = configuredApiBaseUrl;
   const [loadError, setLoadError] = useState(false);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);

@@ -1,3 +1,4 @@
+import { API_BASE_URL as configuredApiBaseUrl } from '../utils/api';
 // src/pages/ResetPassword.jsx
 import React, { useState } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
@@ -12,7 +13,7 @@ const ResetPassword = ({ apiBaseUrl }) => {
   const [message, setMessage] = useState(null); // { type: 'success' | 'error', text }
   const [loading, setLoading] = useState(false);
 
-  const baseUrl = apiBaseUrl ?? (import.meta.env.VITE_API_URL || '');
+  const baseUrl = apiBaseUrl ?? (configuredApiBaseUrl);
 
   const handleReset = async (e) => {
     e.preventDefault();

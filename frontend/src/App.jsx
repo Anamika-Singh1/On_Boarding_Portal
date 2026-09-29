@@ -1,3 +1,4 @@
+import { API_BASE_URL as configuredApiBaseUrl } from './utils/api';
 import React, { useState, useEffect, createContext, lazy, Suspense } from "react";
 import ErrorBoundary from './components/ErrorBoundary';
 import { Routes, Route, Navigate } from "react-router-dom";
@@ -22,7 +23,7 @@ export const AuthContext = createContext();
 export const ThemeContext = createContext();
 
 // Set up API base URL from environment
-const API_BASE_URL = import.meta.env.VITE_API_URL || "";
+const API_BASE_URL = configuredApiBaseUrl;
 
 export default function App() {
   // Restore a logged-in session on refresh: LoginPage already persists

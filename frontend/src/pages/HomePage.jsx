@@ -1,3 +1,4 @@
+import { API_BASE_URL as configuredApiBaseUrl } from '../utils/api';
 import React, { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
@@ -58,7 +59,7 @@ const HomePage = ({ user, data }) => {
   const [internCount, setInternCount] = useState(null);
   const [loadError, setLoadError] = useState(false);
   const [retry, setRetry] = useState(0);
-  const apiBaseUrl = import.meta.env.VITE_API_URL || '';
+  const apiBaseUrl = configuredApiBaseUrl;
 
   useEffect(() => {
     let cancelled = false;
