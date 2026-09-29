@@ -1,85 +1,131 @@
 import React, { useState } from "react";
+import { Plus, Trash2, PlayCircle } from "lucide-react";
+import { Card, Input, Button, IconButton, EmptyState, PageHeader, ConfirmDialog, Modal } from "@/components/ui";
+import getYouTubeVideoId from "@/utils/getYouTubeVideoId";
 
 const VideosPage = ({ user, data, updateData, showToast }) => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingVideo, setDeletingVideo] = useState(null);
   const [video, setVideo] = useState({ title: "", url: "" });
+  const isManager = user.role === "manager";
 
   const handleAdd = (e) => {
     e.preventDefault();
     if (!video.title || !video.url) return;
 
-    const newVideo = {
-      id: Date.now(),
-      title: video.title,
-      url: video.url,
-    };
-
+    const newVideo = { id: Date.now(), title: video.title.trim(), url: video.url.trim() };
     updateData("videos", [...data.videos, newVideo]);
     showToast("Video added successfully!", "success");
     setVideo({ title: "", url: "" });
+    setIsModalOpen(false);
   };
 
-  const handleDelete = (id) => {
-    const updated = data.videos.filter((vid) => vid.id !== id);
-    updateData("videos", updated);
+  const confirmDelete = () => {
+    updateData("videos", data.videos.filter((v) => v.id !== deletingVideo.id));
     showToast("Video deleted!", "success");
+    setDeletingVideo(null);
   };
 
   return (
     <div className="space-y-6">
-      <h1 className="text-3xl font-bold text-gray-800 dark:text-white">Onboarding Videos</h1>
+      <PageHeader
+        title="Training Videos"
+        description="Onboarding and knowledge-transfer videos for interns."
+        actions={
+          isManager && (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus size={16} className="mr-1.5" /> Add video
+            </Button>
+          )
+        }
+      />
 
-      {user.role === "manager" && (
-        <form onSubmit={handleAdd} className="space-y-4 bg-white dark:bg-gray-800 p-4 rounded shadow">
-          <input
-            type="text"
-            placeholder="Video Title"
-            value={video.title}
-            onChange={(e) => setVideo({ ...video, title: e.target.value })}
-            className="w-full px-3 py-2 border rounded dark:bg-gray-700 dark:text-white"
-            required
-          />
-          <input
-            type="url"
-            placeholder="YouTube Video URL"
-            value={video.url}
-            onChange={(e) => setVideo({ ...video, url: e.target.value })}
-            className="w-full px-3 py-2 border rounded dark:bg-gray-700 dark:text-white"
-            required
-          />
-          <button
-            type="submit"
-            className="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700"
-          >
-            Add Video
-          </button>
-        </form>
+      {data.videos.length === 0 ? (
+        <EmptyState
+          icon={PlayCircle}
+          title="No training videos yet"
+          description={isManager ? "Add your first training video to help interns get up to speed." : "Your manager hasn't added any training videos yet."}
+          action={
+            isManager && (
+              <Button onClick={() => setIsModalOpen(true)}>
+                <Plus size={16} className="mr-1.5" /> Add the first video
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          {data.videos.map((vid) => {
+            const videoId = getYouTubeVideoId(vid.url);
+            return (
+              <Card key={vid.id} padding="sm">
+                <div className="flex items-start justify-between gap-2 px-1 pt-1">
+                  <h2 className="text-sm font-semibold text-slate-900 dark:text-white">{vid.title}</h2>
+                  {isManager && (
+                    <IconButton
+                      icon={Trash2}
+                      label={`Delete ${vid.title}`}
+                      variant="danger"
+                      onClick={() => setDeletingVideo(vid)}
+                    />
+                  )}
+                </div>
+                <div className="mt-2 aspect-video overflow-hidden rounded-lg bg-slate-100 dark:bg-slate-800">
+                  {videoId ? (
+                    <iframe
+                      src={`https://www.youtube.com/embed/${videoId}`}
+                      title={vid.title}
+                      className="h-full w-full"
+                      allowFullScreen
+                    />
+                  ) : (
+                    <div className="flex h-full items-center justify-center text-sm text-slate-400">
+                      Invalid YouTube URL
+                    </div>
+                  )}
+                </div>
+              </Card>
+            );
+          })}
+        </div>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {data.videos.map((vid) => (
-          <div key={vid.id} className="bg-white dark:bg-gray-800 p-4 rounded shadow">
-            <h2 className="text-lg font-semibold dark:text-white mb-2">{vid.title}</h2>
-            <div className="aspect-video">
-              <iframe
-                width="100%"
-                height="200"
-                src={vid.url}
-                title={vid.title}
-                frameBorder="0"
-                allowFullScreen
-              ></iframe>
-            </div>
-            {user.role === "manager" && (
-              <button
-                onClick={() => handleDelete(vid.id)}
-                className="mt-2 text-red-600 hover:underline"
-              >
-                Delete
-              </button>
-            )}
+      <Modal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} title="Add training video">
+        <form onSubmit={handleAdd} className="space-y-4">
+          <Input
+            label="Video title"
+            value={video.title}
+            onChange={(e) => setVideo({ ...video, title: e.target.value })}
+            placeholder="Enter video title"
+            required
+          />
+          <Input
+            label="YouTube URL"
+            type="url"
+            value={video.url}
+            onChange={(e) => setVideo({ ...video, url: e.target.value })}
+            placeholder="https://www.youtube.com/watch?v=…"
+            required
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={() => setIsModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button type="submit">
+              <Plus size={16} className="mr-1.5" /> Add video
+            </Button>
           </div>
-        ))}
-      </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingVideo}
+        onClose={() => setDeletingVideo(null)}
+        onConfirm={confirmDelete}
+        title="Delete video?"
+        description={`This will remove "${deletingVideo?.title ?? ''}" from the training library.`}
+        confirmLabel="Delete"
+      />
     </div>
   );
 };

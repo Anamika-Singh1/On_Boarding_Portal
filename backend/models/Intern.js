@@ -19,8 +19,10 @@ internSchema.post('save', async function () {
   await updateInternCount(this.mentorId);
 });
 
-// After remove
-internSchema.post('remove', async function () {
+// After delete (Mongoose 7+ renamed the document 'remove' hook to 'deleteOne';
+// { document: true, query: false } is required since 'deleteOne' also exists
+// as query middleware for Model.deleteOne()).
+internSchema.post('deleteOne', { document: true, query: false }, async function () {
   await updateInternCount(this.mentorId);
 });
 

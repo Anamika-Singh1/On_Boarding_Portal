@@ -1,122 +1,146 @@
-
 import React, { useState } from "react";
-import Card from "@/components/ui/Card";
-import Button from "@/components/ui/Button";
-import Input from "@/components/ui/Input";
-import { Plus, Trash2 } from "lucide-react";
+import { Plus, Trash2, UserCog } from "lucide-react";
+import { Card, Input, Button, IconButton, Badge, EmptyState, PageHeader, ConfirmDialog, Modal } from "@/components/ui";
 
+const emptyForm = { name: "", email: "", role: "" };
 
 const UserPage = ({ user, data, updateData, showToast }) => {
-  const [showForm, setShowForm] = useState(false);
-  const [roleChoice, setRoleChoice] = useState("");
-  const [formData, setFormData] = useState({ name: "", email: "" });
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [deletingUser, setDeletingUser] = useState(null);
+  const [formData, setFormData] = useState(emptyForm);
+  const isManager = user.role === "manager";
 
-  const handleAddUser = () => {
-    const { name, email } = formData;
+  const resetForm = () => {
+    setFormData(emptyForm);
+    setIsModalOpen(false);
+  };
 
-    if (!name || !email || !roleChoice) {
+  const handleAddUser = (e) => {
+    e.preventDefault();
+    const { name, email, role } = formData;
+    if (!name || !email || !role) {
       showToast("Please fill all fields", "error");
       return;
     }
 
-    const newUser = {
-      id: Date.now().toString(),
-      name,
-      email,
-      role: roleChoice,
-    };
-
-    updateData({ ...data, users: [...data.users, newUser] });
+    const newUser = { id: Date.now().toString(), name, email, role };
+    updateData("users", [...data.users, newUser]);
     showToast("User added successfully!", "success");
-
-    // Reset
-    setFormData({ name: "", email: "" });
-    setRoleChoice("");
-    setShowForm(false);
+    resetForm();
   };
 
-  const handleRemoveUser = (id) => {
-    const updatedUsers = data.users.filter((u) => u.id !== id);
-    updateData({ ...data, users: updatedUsers });
+  const confirmRemove = () => {
+    updateData("users", data.users.filter((u) => u.id !== deletingUser.id));
     showToast("User removed successfully!", "success");
+    setDeletingUser(null);
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-semibold text-gray-800 dark:text-white">
-          User Management
-        </h2>
-        <Button onClick={() => setShowForm(!showForm)} className="flex items-center gap-2">
-          <Plus size={18} />
-          {showForm ? "Cancel" : "Add User"}
-        </Button>
-      </div>
-
-      {showForm && (
-        <div className="p-4 border rounded-xl shadow bg-gray-100 dark:bg-gray-800 space-y-4">
-          <div className="flex gap-4">
-            <Button
-              variant={roleChoice === "Manager" ? "default" : "outline"}
-              onClick={() => setRoleChoice("Manager")}
-            >
-              Manager
+      <PageHeader
+        title="User Management"
+        description="People with access to the onboarding portal."
+        actions={
+          isManager && (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus size={16} className="mr-1.5" /> Add user
             </Button>
-            <Button
-              variant={roleChoice === "Employee" ? "default" : "outline"}
-              onClick={() => setRoleChoice("Employee")}
-            >
-              Employee
-            </Button>
-          </div>
+          )
+        }
+      />
 
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div>
-              <label className="block mb-1 font-medium">Name</label>
-              <Input
-                placeholder="Enter name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              />
-            </div>
-            <div>
-              <label className="block mb-1 font-medium">Email</label>
-              <Input
-                placeholder="Enter email"
-                type="email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-              />
-            </div>
-          </div>
-
-          <Button className="w-full mt-2" onClick={handleAddUser}>
-            Add {roleChoice || "User"}
-          </Button>
+      {!Array.isArray(data.users) || data.users.length === 0 ? (
+        <EmptyState
+          icon={UserCog}
+          title="No users added yet"
+          description={isManager ? "Add a manager or employee to grant them portal access." : "No users have been added yet."}
+          action={
+            isManager && (
+              <Button onClick={() => setIsModalOpen(true)}>
+                <Plus size={16} className="mr-1.5" /> Add the first user
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {data.users.map((u) => (
+            <Card key={u.id} hover>
+              <div className="flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="text-base font-semibold text-slate-900 dark:text-white">{u.name}</h3>
+                  <p className="text-sm text-slate-500 dark:text-slate-400">{u.email}</p>
+                </div>
+                {isManager && (
+                  <IconButton icon={Trash2} label={`Remove ${u.name}`} variant="danger" onClick={() => setDeletingUser(u)} />
+                )}
+              </div>
+              <Badge variant="info" withIcon={false} className="mt-3 capitalize">
+                {u.role}
+              </Badge>
+            </Card>
+          ))}
         </div>
       )}
 
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.isArray(data.users) &&
-          data.users.map((u) => (
-            <Card key={u.id} className="p-4 space-y-2 shadow rounded-2xl">
-              <h3 className="text-lg font-semibold">{u.name}</h3>
-              <p className="text-sm text-gray-500">{u.email}</p>
-              <p className="text-sm text-blue-600 dark:text-blue-400 font-medium">{u.role}</p>
-              <Button
-                variant="destructive"
-                size="sm"
-                className="mt-2"
-                onClick={() => handleRemoveUser(u.id)}
-              >
-                <Trash2 size={16} className="mr-1" />
-                Remove
-              </Button>
-            </Card>
-          ))}
-      </div>
+      <Modal isOpen={isModalOpen} onClose={resetForm} title="Add user">
+        <form onSubmit={handleAddUser} className="space-y-4">
+          <div>
+            <span className="mb-1.5 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              Role<span className="ml-0.5 text-red-500">*</span>
+            </span>
+            <div className="grid grid-cols-2 gap-2">
+              {["Manager", "Employee"].map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  aria-pressed={formData.role === r}
+                  onClick={() => setFormData({ ...formData, role: r })}
+                  className={`rounded-lg border px-3 py-2 text-sm font-medium transition-colors ${
+                    formData.role === r
+                      ? "border-blue-600 bg-blue-50 text-blue-700 dark:border-blue-500 dark:bg-blue-500/10 dark:text-blue-300"
+                      : "border-slate-300 text-slate-600 hover:bg-slate-50 dark:border-slate-700 dark:text-slate-300 dark:hover:bg-slate-800"
+                  }`}
+                >
+                  {r}
+                </button>
+              ))}
+            </div>
+          </div>
+          <Input
+            label="Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            placeholder="Enter name"
+            required
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="Enter email"
+            required
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button type="submit">Add {formData.role || "user"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingUser}
+        onClose={() => setDeletingUser(null)}
+        onConfirm={confirmRemove}
+        title="Remove user?"
+        description={`This will revoke ${deletingUser?.name ?? "this user"}'s access to the portal.`}
+        confirmLabel="Remove"
+      />
     </div>
   );
 };
 
-export default UserPage; 
+export default UserPage;

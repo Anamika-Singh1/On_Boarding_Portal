@@ -1,158 +1,175 @@
 import React, { useState } from "react";
-import { Plus, Trash2, Edit } from "lucide-react";
+import { Plus, Trash2, Edit, ExternalLink, ListChecks } from "lucide-react";
+import { Card, Input, Button, IconButton, EmptyState, PageHeader, ConfirmDialog, Modal } from "@/components/ui";
 
 const OnBoarding = ({ user, data, updateData, showToast }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingItem, setEditingItem] = useState(null);
-  const [formData, setFormData] = useState({
-    heading: "",
-    subTopics: "",
-    learningLink: "",
-  });
+  const [deletingId, setDeletingId] = useState(null);
+  const [formData, setFormData] = useState({ heading: "", subTopics: "", learningLink: "" });
+  const isManager = user.role === "manager";
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    const subTopicsArray = formData.subTopics
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
-
-    if (editingItem) {
-      const updated = data.onboardingEssentials.map((item) =>
-        item.id === editingItem.id
-          ? { ...item, ...formData, subTopics: subTopicsArray }
-          : item
-      );
-      updateData("onboardingEssentials", updated);
-      showToast("Onboarding updated!", "success");
-    } else {
-      const newItem = {
-        id: Date.now(),
-        ...formData,
-        subTopics: subTopicsArray,
-      };
-      updateData("onboardingEssentials", [...data.onboardingEssentials, newItem]);
-      showToast("New onboarding item added!", "success");
-    }
-
+  const resetForm = () => {
     setIsModalOpen(false);
     setEditingItem(null);
     setFormData({ heading: "", subTopics: "", learningLink: "" });
   };
 
+  const handleSubmit = (e) => {
+    e.preventDefault();
+    const subTopicsArray = formData.subTopics.split(",").map((s) => s.trim()).filter(Boolean);
+
+    if (editingItem) {
+      const updated = data.onboardingEssentials.map((item) =>
+        item.id === editingItem.id ? { ...item, ...formData, subTopics: subTopicsArray } : item
+      );
+      updateData("onboardingEssentials", updated);
+      showToast("Onboarding step updated!", "success");
+    } else {
+      const newItem = { id: Date.now(), ...formData, subTopics: subTopicsArray };
+      updateData("onboardingEssentials", [...data.onboardingEssentials, newItem]);
+      showToast("Onboarding step added!", "success");
+    }
+    resetForm();
+  };
+
   const handleEdit = (item) => {
     setEditingItem(item);
-    setFormData({
-      heading: item.heading,
-      subTopics: item.subTopics.join(", "),
-      learningLink: item.learningLink,
-    });
+    setFormData({ heading: item.heading, subTopics: item.subTopics.join(", "), learningLink: item.learningLink });
     setIsModalOpen(true);
   };
 
-  const handleDelete = (id) => {
-    const updated = data.onboardingEssentials.filter((item) => item.id !== id);
-    updateData("onboardingEssentials", updated);
-    showToast("Item deleted", "success");
+  const confirmDelete = () => {
+    updateData("onboardingEssentials", data.onboardingEssentials.filter((item) => item.id !== deletingId));
+    showToast("Onboarding step removed", "success");
+    setDeletingId(null);
   };
 
   return (
-    <div className="p-4 space-y-4">
-      <div className="flex justify-between items-center">
-        <h1 className="text-2xl font-bold">Onboarding Essentials</h1>
-        {user.role === "manager" && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center"
-          >
-            <Plus size={16} className="mr-2" /> Add
-          </button>
-        )}
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="Onboarding Essentials"
+        description="The resources and learning steps every new intern should work through."
+        actions={
+          isManager && (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus size={16} className="mr-1.5" /> Add step
+            </Button>
+          )
+        }
+      />
 
-      <div className="grid md:grid-cols-2 gap-4">
-        {data.onboardingEssentials.map((item) => (
-          <div key={item.id} className="border p-4 rounded shadow bg-white dark:bg-gray-800">
-            <div className="flex justify-between items-center mb-2">
-              <h2 className="text-lg font-semibold">{item.heading}</h2>
-              {user.role === "manager" && (
-                <div className="flex gap-2">
-                  <button onClick={() => handleEdit(item)} className="text-blue-600">
-                    <Edit size={16} />
-                  </button>
-                  <button onClick={() => handleDelete(item.id)} className="text-red-600">
-                    <Trash2 size={16} />
-                  </button>
+      {data.onboardingEssentials.length === 0 ? (
+        <EmptyState
+          icon={ListChecks}
+          title="No onboarding steps yet"
+          description={
+            isManager
+              ? "Add the first learning resource to build out the onboarding checklist."
+              : "Your manager hasn't published any onboarding steps yet. Check back soon."
+          }
+          action={
+            isManager && (
+              <Button onClick={() => setIsModalOpen(true)}>
+                <Plus size={16} className="mr-1.5" /> Add the first step
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <ol className="space-y-3">
+          {data.onboardingEssentials.map((item, index) => (
+            <li key={item.id}>
+              <Card className="flex flex-col gap-4 sm:flex-row sm:items-start" hover>
+                <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-blue-50 text-sm font-semibold text-blue-700 dark:bg-blue-500/10 dark:text-blue-400">
+                  {index + 1}
                 </div>
-              )}
-            </div>
-            <p className="text-sm text-gray-600 dark:text-gray-300 mb-1">
-              SubTopics: {item.subTopics.join(", ")}
-            </p>
-            <a
-              href={item.learningLink}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-500 underline text-sm"
-            >
-              {item.learningLink}
-            </a>
-          </div>
-        ))}
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-          <form
-            onSubmit={handleSubmit}
-            className="bg-white dark:bg-gray-800 p-6 rounded-lg space-y-4 w-full max-w-md"
-          >
-            <h2 className="text-xl font-semibold mb-4">
-              {editingItem ? "Edit" : "Add"} Onboarding Item
-            </h2>
-            <input
-              type="text"
-              value={formData.heading}
-              onChange={(e) => setFormData({ ...formData, heading: e.target.value })}
-              placeholder="Heading"
-              required
-              className="w-full px-4 py-2 border rounded"
-            />
-            <input
-              type="text"
-              value={formData.subTopics}
-              onChange={(e) => setFormData({ ...formData, subTopics: e.target.value })}
-              placeholder="Subtopics (comma separated)"
-              required
-              className="w-full px-4 py-2 border rounded"
-            />
-            <input
-              type="url"
-              value={formData.learningLink}
-              onChange={(e) => setFormData({ ...formData, learningLink: e.target.value })}
-              placeholder="Learning Link"
-              required
-              className="w-full px-4 py-2 border rounded"
-            />
-            <div className="flex justify-end space-x-2">
-              <button type="submit" className="bg-blue-600 text-white px-4 py-2 rounded">
-                {editingItem ? "Update" : "Add"}
-              </button>
-              <button
-                type="button"
-                className="border px-4 py-2 rounded"
-                onClick={() => {
-                  setIsModalOpen(false);
-                  setEditingItem(null);
-                  setFormData({ heading: "", subTopics: "", learningLink: "" });
-                }}
-              >
-                Cancel
-              </button>
-            </div>
-          </form>
-        </div>
+                <div className="min-w-0 flex-1">
+                  <div className="flex flex-wrap items-start justify-between gap-2">
+                    <h2 className="text-base font-semibold text-slate-900 dark:text-white">{item.heading}</h2>
+                    {isManager && (
+                      <div className="flex gap-1">
+                        <IconButton icon={Edit} label={`Edit ${item.heading}`} onClick={() => handleEdit(item)} />
+                        <IconButton
+                          icon={Trash2}
+                          label={`Delete ${item.heading}`}
+                          variant="danger"
+                          onClick={() => setDeletingId(item.id)}
+                        />
+                      </div>
+                    )}
+                  </div>
+                  {item.subTopics.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-1.5">
+                      {item.subTopics.map((topic, i) => (
+                        <span
+                          key={i}
+                          className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-600 dark:bg-slate-800 dark:text-slate-300"
+                        >
+                          {topic}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {item.learningLink && (
+                    <a
+                      href={item.learningLink}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="mt-3 inline-flex items-center gap-1 text-sm font-medium text-blue-600 hover:underline dark:text-blue-400"
+                    >
+                      Open resource <ExternalLink size={14} />
+                    </a>
+                  )}
+                </div>
+              </Card>
+            </li>
+          ))}
+        </ol>
       )}
+
+      <Modal isOpen={isModalOpen} onClose={resetForm} title={editingItem ? "Edit onboarding step" : "Add onboarding step"}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Heading"
+            value={formData.heading}
+            onChange={(e) => setFormData({ ...formData, heading: e.target.value })}
+            placeholder="e.g. Set up your development environment"
+            required
+          />
+          <Input
+            label="Subtopics"
+            hint="Comma separated"
+            value={formData.subTopics}
+            onChange={(e) => setFormData({ ...formData, subTopics: e.target.value })}
+            placeholder="Git, VS Code, Docker"
+            required
+          />
+          <Input
+            label="Learning link"
+            type="url"
+            value={formData.learningLink}
+            onChange={(e) => setFormData({ ...formData, learningLink: e.target.value })}
+            placeholder="https://…"
+            required
+          />
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={resetForm}>
+              Cancel
+            </Button>
+            <Button type="submit">{editingItem ? "Save changes" : "Add step"}</Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingId}
+        onClose={() => setDeletingId(null)}
+        onConfirm={confirmDelete}
+        title="Delete onboarding step?"
+        description="This will remove the step from every intern's checklist. This can't be undone."
+        confirmLabel="Delete"
+      />
     </div>
   );
 };

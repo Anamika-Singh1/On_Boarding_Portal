@@ -1,41 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { Plus, Trash2, Edit } from 'lucide-react';
+import fetchList from '@/utils/fetchList';
+import { Plus, Trash2, Edit, GraduationCap } from 'lucide-react';
+import {
+  Card,
+  Input,
+  Select,
+  Button,
+  IconButton,
+  EmptyState,
+  PageHeader,
+  ConfirmDialog,
+  Modal,
+  CardGridSkeleton,
+} from '@/components/ui';
+
+const emptyForm = { name: '', email: '', department: '', mentorId: '' };
+
+// The API returns mentorId populated as a full mentor object; this normalizes
+// it back to a plain id string for form state either way.
+const mentorIdOf = (mentorId) => (mentorId && typeof mentorId === 'object' ? mentorId._id : mentorId || '');
 
 const Intern = ({ user, data, updateData, showToast }) => {
-  const API_BASE_URL = import.meta.env.VITE_API_URL;
-
+  const API_BASE_URL = import.meta.env.VITE_API_URL || '';
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingIntern, setEditingIntern] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    department: '',
-    mentorId: ''
-  });
+  const [deletingIntern, setDeletingIntern] = useState(null);
+  const [deleting, setDeleting] = useState(false);
+  const [formData, setFormData] = useState(emptyForm);
+  const isManager = user.role === 'manager';
 
-  const resetForm = () => {
-    setFormData({ name: '', email: '', department: '', mentorId: '' });
-    setEditingIntern(null);
-    setIsModalOpen(false);
-  };
+const resetForm = () => {
+  setIsModalOpen(false);
+  setEditingIntern(null);
+  setFormData({ ...emptyForm });
+};
 
   const fetchInterns = async () => {
+    setLoadError(false);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/interns`);
-      const interns = await res.json();
+      const [interns, mentors] = await Promise.all([fetchList('interns'), fetchList('mentors')]);
       updateData('interns', interns);
+      updateData('mentors', mentors);
     } catch (error) {
       console.error('Error fetching interns:', error);
+      setLoadError(true);
+      showToast('Unable to load interns. Please try again.', 'error');
+    } finally {
+      setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchInterns();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-
     const payload = {
       name: formData.name,
       email: formData.email,
@@ -44,10 +68,9 @@ const Intern = ({ user, data, updateData, showToast }) => {
     };
 
     const method = editingIntern ? 'PUT' : 'POST';
-    const url = editingIntern
-      ? `${API_BASE_URL}/api/interns/${editingIntern._id}`
-      : `${API_BASE_URL}/api/interns`;
+    const url = editingIntern ? `${API_BASE_URL}/api/interns/${editingIntern._id}` : `${API_BASE_URL}/api/interns`;
 
+    setSubmitting(true);
     try {
       const res = await fetch(url, {
         method,
@@ -59,11 +82,13 @@ const Intern = ({ user, data, updateData, showToast }) => {
       if (!res.ok) throw new Error(result.message || 'Something went wrong');
 
       showToast(editingIntern ? 'Intern updated!' : 'Intern added!', 'success');
-      fetchInterns();
+      await fetchInterns();
       resetForm();
     } catch (err) {
       console.error('Intern submit error:', err);
       showToast('Failed to save intern', 'error');
+    } finally {
+      setSubmitting(false);
     }
   };
 
@@ -73,132 +98,161 @@ const Intern = ({ user, data, updateData, showToast }) => {
       name: intern.name,
       email: intern.email,
       department: intern.department,
-      mentorId: intern.mentorId
+      mentorId: mentorIdOf(intern.mentorId),
     });
     setIsModalOpen(true);
   };
 
-  const handleDelete = async (_id) => {
+  const handleDelete = async () => {
+    if (!deletingIntern) return;
+    setDeleting(true);
     try {
-      const res = await fetch(`${API_BASE_URL}/api/interns/${_id}`, {
-        method: 'DELETE'
-      });
+      const res = await fetch(`${API_BASE_URL}/api/interns/${deletingIntern._id}`, { method: 'DELETE' });
       const result = await res.json();
       if (!res.ok) throw new Error(result.message || 'Delete failed');
       showToast('Intern deleted successfully!', 'success');
-      fetchInterns();
+      await fetchInterns();
     } catch (err) {
       console.error('Delete error:', err);
       showToast('Failed to delete intern', 'error');
+    } finally {
+      setDeleting(false);
+      setDeletingIntern(null);
     }
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">Interns Information</h1>
-        {user.role === 'manager' && (
-          <button
-            onClick={() => setIsModalOpen(true)}
-            className="bg-blue-600 text-white px-4 py-2 rounded flex items-center"
-          >
-            <Plus size={16} className="mr-2" /> Add Intern
-          </button>
-        )}
-      </div>
+      <PageHeader
+        title="Interns"
+        description="Everyone currently going through onboarding."
+        actions={
+          isManager && (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus size={16} className="mr-1.5" /> Add intern
+            </Button>
+          )
+        }
+      />
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {(data?.interns || []).map((intern) => {
-          const mentor = (data?.mentors || []).find((m) => m._id === intern.mentorId);
-          return (
-            <div key={intern._id} className="border rounded p-4 shadow bg-white dark:bg-gray-800">
-              <div className="flex justify-between items-start mb-2">
-                <h2 className="text-xl font-semibold dark:text-white">{intern.name}</h2>
-                {user.role === 'manager' && (
-                  <div className="flex space-x-2">
-                    <button onClick={() => handleEdit(intern)} className="text-blue-600 hover:text-blue-800">
-                      <Edit size={16} />
-                    </button>
-                    <button onClick={() => handleDelete(intern._id)} className="text-red-600 hover:text-red-800">
-                      <Trash2 size={16} />
-                    </button>
+      {loadError ? (
+        <EmptyState icon={GraduationCap} title="Unable to load the intern directory" description="Check your connection and try again." action={<Button onClick={() => { setLoading(true); fetchInterns(); }}>Try again</Button>} />
+      ) : loading ? (
+        <CardGridSkeleton />
+      ) : (data?.interns || []).length === 0 ? (
+        <EmptyState
+          icon={GraduationCap}
+          title="No interns yet"
+          description={isManager ? 'Add an intern to start tracking their onboarding.' : 'No interns have been added yet.'}
+          action={
+            isManager && (
+              <Button onClick={() => setIsModalOpen(true)}>
+                <Plus size={16} className="mr-1.5" /> Add the first intern
+              </Button>
+            )
+          }
+        />
+      ) : (
+        <div className="grid gap-6 md:grid-cols-2">
+          {(data?.interns || []).map((intern) => {
+            const mentor =
+              intern.mentorId && typeof intern.mentorId === 'object'
+                ? intern.mentorId
+                : (data?.mentors || []).find((m) => m._id === intern.mentorId);
+            return (
+              <Card key={intern._id} hover>
+                <div className="flex items-start justify-between gap-3">
+                  <div>
+                    <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{intern.name}</h2>
+                    <p className="text-sm text-slate-500 dark:text-slate-400">{intern.email}</p>
                   </div>
-                )}
-              </div>
-              <div className="space-y-1 text-gray-700 dark:text-gray-300">
-                <div><strong>Email:</strong> {intern.email}</div>
-                <div><strong>Department:</strong> {intern.department}</div>
-                <div><strong>Mentor:</strong> {mentor ? mentor.name : 'N/A'}</div>
-              </div>
-            </div>
-          );
-        })}
-      </div>
-
-      {isModalOpen && (
-        <div className="fixed inset-0 bg-black bg-opacity-50 flex justify-center items-center z-50">
-          <div className="bg-white dark:bg-gray-800 p-6 rounded-lg w-full max-w-md">
-            <h2 className="text-xl font-semibold mb-4">
-              {editingIntern ? 'Edit Intern' : 'Add Intern'}
-            </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <input
-                type="text"
-                placeholder="Intern Name"
-                value={formData.name}
-                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                className="w-full border px-3 py-2 rounded"
-                required
-              />
-              <input
-                type="email"
-                placeholder="Email"
-                value={formData.email}
-                onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                className="w-full border px-3 py-2 rounded"
-                required
-              />
-              <select
-                value={formData.department}
-                onChange={(e) => setFormData({ ...formData, department: e.target.value })}
-                className="w-full border px-3 py-2 rounded"
-                required
-              >
-                <option value="">Select Department</option>
-                <option value="Development">Development</option>
-                <option value="Testing">Testing</option>
-                <option value="Design">Design</option>
-              </select>
-              <select
-                value={formData.mentorId}
-                onChange={(e) => setFormData({ ...formData, mentorId: e.target.value })}
-                className="w-full border px-3 py-2 rounded"
-                required
-              >
-                <option value="">Select Mentor</option>
-                {(data?.mentors || []).map((mentor) => (
-                  <option key={mentor._id} value={mentor._id}>
-                    {mentor.name} - {mentor.field}
-                  </option>
-                ))}
-              </select>
-
-              <div className="flex space-x-4">
-                <button type="submit" className="bg-green-600 text-white px-4 py-2 rounded w-full">
-                  {editingIntern ? 'Update' : 'Add'} Intern
-                </button>
-                <button
-                  type="button"
-                  onClick={resetForm}
-                  className="bg-gray-400 text-white px-4 py-2 rounded w-full"
-                >
-                  Cancel
-                </button>
-              </div>
-            </form>
-          </div>
+                  {isManager && (
+                    <div className="flex shrink-0 gap-1">
+                      <IconButton icon={Edit} label={`Edit ${intern.name}`} onClick={() => handleEdit(intern)} />
+                      <IconButton
+                        icon={Trash2}
+                        label={`Delete ${intern.name}`}
+                        variant="danger"
+                        onClick={() => setDeletingIntern(intern)}
+                      />
+                    </div>
+                  )}
+                </div>
+                <dl className="mt-4 space-y-1.5 text-sm">
+                  <div className="flex gap-1.5">
+                    <dt className="font-medium text-slate-500 dark:text-slate-400">Department:</dt>
+                    <dd className="text-slate-700 dark:text-slate-300">{intern.department}</dd>
+                  </div>
+                  <div className="flex gap-1.5">
+                    <dt className="font-medium text-slate-500 dark:text-slate-400">Mentor:</dt>
+                    <dd className="text-slate-700 dark:text-slate-300">{mentor ? mentor.name : 'Unassigned'}</dd>
+                  </div>
+                </dl>
+              </Card>
+            );
+          })}
         </div>
       )}
+
+      <Modal isOpen={isModalOpen} onClose={resetForm} title={editingIntern ? 'Edit intern' : 'Add intern'}>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <Input
+            label="Name"
+            value={formData.name}
+            onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+            required
+          />
+          <Input
+            label="Email"
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            required
+          />
+          <Select
+            label="Department"
+            value={formData.department}
+            onChange={(e) => setFormData({ ...formData, department: e.target.value })}
+            required
+          >
+            <option value="">Select department</option>
+            <option value="Development">Development</option>
+            <option value="Testing">Testing</option>
+            <option value="Design">Design</option>
+          </Select>
+          <Select
+            label="Mentor"
+            value={formData.mentorId}
+            onChange={(e) => setFormData({ ...formData, mentorId: e.target.value })}
+            required
+          >
+            <option value="">Select mentor</option>
+            {(data?.mentors || []).map((mentor) => (
+              <option key={mentor._id} value={mentor._id}>
+                {mentor.name} - {mentor.field}
+              </option>
+            ))}
+          </Select>
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={resetForm} disabled={submitting}>
+              Cancel
+            </Button>
+            <Button type="submit" loading={submitting}>
+              {editingIntern ? 'Save changes' : 'Add intern'}
+            </Button>
+          </div>
+        </form>
+      </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingIntern}
+        onClose={() => setDeletingIntern(null)}
+        onConfirm={handleDelete}
+        loading={deleting}
+        title="Delete intern?"
+        description={`This will permanently remove ${deletingIntern?.name ?? 'this intern'} from the portal.`}
+        confirmLabel="Delete"
+      />
     </div>
   );
 };

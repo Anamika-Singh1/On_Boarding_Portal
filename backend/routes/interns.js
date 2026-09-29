@@ -56,7 +56,10 @@ router.delete('/:id', async (req, res) => {
     const intern = await Intern.findById(req.params.id);
     if (!intern) return res.status(404).json({ message: 'Intern not found' });
 
-    await intern.remove();
+    // intern.remove() was removed in Mongoose 7+; deleteOne() is the current
+    // document-level equivalent and still triggers the post('deleteOne') hook
+    // that keeps the mentor's internsAssigned count in sync.
+    await intern.deleteOne();
     res.json({ message: 'Intern deleted successfully' });
   } catch (err) {
     console.error('❌ Error in DELETE /api/interns/:id:', err.message);

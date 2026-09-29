@@ -1,63 +1,53 @@
 import React, { useState } from "react";
+import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, ResponsiveContainer } from "recharts";
+import { Plus, Edit, Trash2, FolderKanban } from "lucide-react";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
+  Button,
+  Card,
+  Input,
+  Textarea,
+  Badge,
+  IconButton,
+  EmptyState,
+  PageHeader,
+  ConfirmDialog,
+  Modal,
+} from "@/components/ui";
 
-import { Button, Card, Input } from "@/components/ui"; // Adjust if needed
-import Modal from "../components/Modal.jsx";
-import { Plus, Edit, Trash2 } from "lucide-react"; // ✅ UNCOMMENTED
+const emptyForm = { name: "", description: "", teamMembers: "", progress: 0 };
 
 const ProjectsPages = ({ user, data, updateData, showToast }) => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState(null);
+  const [deletingProject, setDeletingProject] = useState(null);
   const [selectedProjectId, setSelectedProjectId] = useState("");
-  const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    teamMembers: "",
-    progress: 0,
-  });
+  const [formData, setFormData] = useState(emptyForm);
+  const isManager = user.role === "manager";
+
+  const resetForm = () => {
+    setIsModalOpen(false);
+    setEditingProject(null);
+    setFormData(emptyForm);
+  };
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    const teamMembersArray = formData.teamMembers
-      .split(",")
-      .map((s) => s.trim())
-      .filter(Boolean);
+    const teamMembersArray = formData.teamMembers.split(",").map((s) => s.trim()).filter(Boolean);
 
     if (editingProject) {
       const updated = data.projects.map((project) =>
         project.id === editingProject.id
-          ? {
-              ...project,
-              ...formData,
-              teamMembers: teamMembersArray,
-              progress: Number(formData.progress),
-            }
+          ? { ...project, ...formData, teamMembers: teamMembersArray, progress: Number(formData.progress) }
           : project
       );
       updateData("projects", updated);
       showToast("Project updated successfully!", "success");
     } else {
-      const newProject = {
-        id: Date.now(),
-        ...formData,
-        teamMembers: teamMembersArray,
-        progress: Number(formData.progress),
-      };
+      const newProject = { id: Date.now(), ...formData, teamMembers: teamMembersArray, progress: Number(formData.progress) };
       updateData("projects", [...data.projects, newProject]);
       showToast("Project added successfully!", "success");
     }
-
-    setIsModalOpen(false);
-    setEditingProject(null);
-    setFormData({ name: "", description: "", teamMembers: "", progress: 0 });
+    resetForm();
   };
 
   const handleEdit = (project) => {
@@ -71,190 +61,158 @@ const ProjectsPages = ({ user, data, updateData, showToast }) => {
     setIsModalOpen(true);
   };
 
-  const handleDelete = (projectId) => {
-    updateData(
-      "projects",
-      data.projects.filter((project) => project.id !== projectId)
-    );
+  const confirmDelete = () => {
+    updateData("projects", data.projects.filter((project) => project.id !== deletingProject.id));
     showToast("Project deleted successfully!", "success");
+    setDeletingProject(null);
+    if (selectedProjectId === deletingProject.id.toString()) setSelectedProjectId("");
   };
 
-  const selectedProject = data.projects.find(
-    (p) => p.id.toString() === selectedProjectId
-  );
-
+  const selectedProject = data.projects.find((p) => p.id.toString() === selectedProjectId);
   const chartData =
     selectedProject && typeof selectedProject.progress === "number"
-      ? [
-          {
-            name: selectedProject.name,
-            Completed: selectedProject.progress,
-            Pending: 100 - selectedProject.progress,
-          },
-        ]
+      ? [{ name: selectedProject.name, Completed: selectedProject.progress, Pending: 100 - selectedProject.progress }]
       : [];
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-gray-900 dark:text-white">
-          Project Dashboard
-        </h1>
-        {user.role === "manager" && (
-          <Button onClick={() => setIsModalOpen(true)}>
-            <Plus size={16} className="mr-2" />
-            Add Project
-          </Button>
-        )}
-      </div>
+      <PageHeader
+        title="Project Dashboard"
+        description="Track intern project assignments and progress."
+        actions={
+          isManager && (
+            <Button onClick={() => setIsModalOpen(true)}>
+              <Plus size={16} className="mr-1.5" /> Add project
+            </Button>
+          )
+        }
+      />
 
-      <div className="mb-4">
-        <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">
-          Select a Project to View Progress
-        </label>
-        <select
-          value={selectedProjectId}
-          onChange={(e) => setSelectedProjectId(e.target.value)}
-          className="w-full p-2 border border-gray-300 dark:border-gray-600 rounded-md dark:bg-gray-800 dark:text-white"
-        >
-          <option value="">-- Select Project --</option>
-          {data.projects.map((project) => (
-            <option key={project.id} value={project.id}>
-              {project.name}
-            </option>
-          ))}
-        </select>
-      </div>
-
-      {selectedProject ? (
-        <div className="bg-white dark:bg-gray-800 p-6 rounded-lg shadow">
-          <h2 className="text-2xl font-semibold mb-4 text-gray-800 dark:text-white">
-            Progress Overview - {selectedProject.name}
-          </h2>
-          <ResponsiveContainer width="100%" height={300}>
-            <BarChart
-              data={chartData}
-              margin={{ top: 20, right: 30, left: 20, bottom: 5 }}
-            >
-              <XAxis dataKey="name" stroke="#8884d8" />
-              <YAxis domain={[0, 100]} />
-              <Tooltip />
-              <Legend />
-              <Bar dataKey="Completed" stackId="a" fill="#34d399" />
-              <Bar dataKey="Pending" stackId="a" fill="#f87171" />
-            </BarChart>
-          </ResponsiveContainer>
-        </div>
+      {data.projects.length === 0 ? (
+        <EmptyState
+          icon={FolderKanban}
+          title="No projects yet"
+          description={isManager ? "Add a project to start tracking intern progress." : "No projects have been added yet."}
+          action={
+            isManager && (
+              <Button onClick={() => setIsModalOpen(true)}>
+                <Plus size={16} className="mr-1.5" /> Add the first project
+              </Button>
+            )
+          }
+        />
       ) : (
-        <div className="text-center text-gray-500 dark:text-gray-400 italic">
-          Select a project to view its progress chart.
-        </div>
+        <>
+          <Card>
+            <label htmlFor="project-select" className="mb-2 block text-sm font-medium text-slate-700 dark:text-slate-300">
+              View progress for
+            </label>
+            <select
+              id="project-select"
+              value={selectedProjectId}
+              onChange={(e) => setSelectedProjectId(e.target.value)}
+              className="w-full rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-900 focus:outline-none focus:ring-2 focus:ring-blue-500 dark:border-slate-700 dark:bg-slate-800 dark:text-white"
+            >
+              <option value="">— Select a project —</option>
+              {data.projects.map((project) => (
+                <option key={project.id} value={project.id}>
+                  {project.name}
+                </option>
+              ))}
+            </select>
+
+            {selectedProject ? (
+              <div className="mt-6">
+                <h2 className="mb-4 text-base font-semibold text-slate-900 dark:text-white">
+                  Progress overview — {selectedProject.name}
+                </h2>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={chartData} margin={{ top: 10, right: 20, left: 0, bottom: 5 }}>
+                    <XAxis dataKey="name" stroke="currentColor" className="text-xs text-slate-500" />
+                    <YAxis domain={[0, 100]} stroke="currentColor" className="text-xs text-slate-500" />
+                    <Tooltip />
+                    <Legend />
+                    <Bar dataKey="Completed" stackId="a" fill="#10b981" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="Pending" stackId="a" fill="#f87171" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            ) : (
+              <p className="mt-6 text-center text-sm italic text-slate-400 dark:text-slate-500">
+                Select a project above to see its progress chart.
+              </p>
+            )}
+          </Card>
+
+          <div className="grid gap-6 md:grid-cols-2">
+            {data.projects.map((project) => (
+              <Card key={project.id} hover>
+                <div className="flex items-start justify-between gap-3">
+                  <h2 className="text-lg font-semibold text-slate-900 dark:text-white">{project.name}</h2>
+                  {isManager && (
+                    <div className="flex shrink-0 gap-1">
+                      <IconButton icon={Edit} label={`Edit ${project.name}`} onClick={() => handleEdit(project)} />
+                      <IconButton
+                        icon={Trash2}
+                        label={`Delete ${project.name}`}
+                        variant="danger"
+                        onClick={() => setDeletingProject(project)}
+                      />
+                    </div>
+                  )}
+                </div>
+                <p className="mt-2 text-sm text-slate-600 dark:text-slate-400">{project.description}</p>
+
+                {project.teamMembers?.length > 0 && (
+                  <div className="mt-3">
+                    <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Team</span>
+                    <div className="mt-1.5 flex flex-wrap gap-1.5">
+                      {project.teamMembers.map((member, idx) => (
+                        <Badge key={idx} variant="info" withIcon={false}>
+                          {member}
+                        </Badge>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                <div className="mt-4">
+                  <div className="mb-1 flex justify-between text-xs text-slate-500 dark:text-slate-400">
+                    <span>{project.progress}% complete</span>
+                    <span>{100 - project.progress}% remaining</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-slate-200 dark:bg-slate-800">
+                    <div
+                      className="h-2 rounded-full bg-emerald-500 transition-all"
+                      style={{ width: `${project.progress}%` }}
+                    />
+                  </div>
+                </div>
+              </Card>
+            ))}
+          </div>
+        </>
       )}
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {data.projects.map((project) => (
-          <Card
-            key={project.id}
-            className="p-5 shadow-lg border dark:bg-gray-900"
-          >
-            <div className="flex justify-between items-start mb-3">
-              <h2 className="text-xl font-bold dark:text-white">
-                {project.name}
-              </h2>
-              {user.role === "manager" && (
-                <div className="flex space-x-2">
-                  <button
-                    onClick={() => handleEdit(project)}
-                    className="text-blue-500 hover:text-blue-700"
-                  >
-                    <Edit size={16} />
-                  </button>
-                  <button
-                    onClick={() => handleDelete(project.id)}
-                    className="text-red-500 hover:text-red-700"
-                  >
-                    <Trash2 size={16} />
-                  </button>
-                </div>
-              )}
-            </div>
-            <p className="text-gray-600 dark:text-gray-400 mb-2">
-              {project.description}
-            </p>
-            <div className="mb-2">
-              <span className="font-medium text-gray-700 dark:text-gray-300">
-                Team:
-              </span>
-              <div className="flex flex-wrap gap-2 mt-1">
-                {project.teamMembers.map((member, idx) => (
-                  <span
-                    key={idx}
-                    className="bg-blue-100 text-blue-800 px-2 py-1 rounded-full text-sm"
-                  >
-                    {member}
-                  </span>
-                ))}
-              </div>
-            </div>
-            <div className="mt-3">
-              <div className="flex justify-between text-sm text-gray-600 dark:text-gray-400 mb-1">
-                <span>Completed: {project.progress}%</span>
-                <span>Pending: {100 - project.progress}%</span>
-              </div>
-              <div className="w-full bg-gray-300 dark:bg-gray-700 rounded-full h-2">
-                <div
-                  className="bg-green-500 h-2 rounded-full"
-                  style={{ width: `${project.progress}%` }}
-                ></div>
-              </div>
-            </div>
-          </Card>
-        ))}
-      </div>
-
-      <Modal
-        isOpen={isModalOpen}
-        onClose={() => {
-          setIsModalOpen(false);
-          setEditingProject(null);
-          setFormData({
-            name: "",
-            description: "",
-            teamMembers: "",
-            progress: 0,
-          });
-        }}
-        title={editingProject ? "Edit Project" : "Add Project"}
-      >
+      <Modal isOpen={isModalOpen} onClose={resetForm} title={editingProject ? "Edit project" : "Add project"}>
         <form onSubmit={handleSubmit} className="space-y-4">
           <Input
-            label="Project Name"
+            label="Project name"
             value={formData.name}
             onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-            placeholder="Enter project name"
             required
           />
-          <div>
-            <label className="block mb-1 text-sm font-medium text-gray-700 dark:text-gray-300">
-              Description <span className="text-red-500">*</span>
-            </label>
-            <textarea
-              value={formData.description}
-              onChange={(e) =>
-                setFormData({ ...formData, description: e.target.value })
-              }
-              required
-              rows={3}
-              className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-md focus:ring focus:ring-blue-500 dark:bg-gray-700 dark:text-white"
-              placeholder="Enter description"
-            />
-          </div>
+          <Textarea
+            label="Description"
+            value={formData.description}
+            onChange={(e) => setFormData({ ...formData, description: e.target.value })}
+            required
+          />
           <Input
-            label="Team Members (comma separated)"
+            label="Team members"
+            hint="Comma separated"
             value={formData.teamMembers}
-            onChange={(e) =>
-              setFormData({ ...formData, teamMembers: e.target.value })
-            }
+            onChange={(e) => setFormData({ ...formData, teamMembers: e.target.value })}
             placeholder="John, Alice, Bob"
             required
           />
@@ -264,30 +222,26 @@ const ProjectsPages = ({ user, data, updateData, showToast }) => {
             min={0}
             max={100}
             value={formData.progress}
-            onChange={(e) =>
-              setFormData({
-                ...formData,
-                progress: parseInt(e.target.value) || 0,
-              })
-            }
-            placeholder="0 - 100"
+            onChange={(e) => setFormData({ ...formData, progress: parseInt(e.target.value) || 0 })}
             required
           />
-          <div className="flex space-x-4">
-            <Button type="submit" className="flex-1">
-              {editingProject ? "Update" : "Add"} Project
-            </Button>
-            <Button
-              type="button"
-              variant="outline"
-              onClick={() => setIsModalOpen(false)}
-              className="flex-1"
-            >
+          <div className="flex justify-end gap-3 pt-2">
+            <Button type="button" variant="outline" onClick={resetForm}>
               Cancel
             </Button>
+            <Button type="submit">{editingProject ? "Save changes" : "Add project"}</Button>
           </div>
         </form>
       </Modal>
+
+      <ConfirmDialog
+        isOpen={!!deletingProject}
+        onClose={() => setDeletingProject(null)}
+        onConfirm={confirmDelete}
+        title="Delete project?"
+        description={`This will permanently remove "${deletingProject?.name ?? ''}" and its progress data.`}
+        confirmLabel="Delete"
+      />
     </div>
   );
 };
